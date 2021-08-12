@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/Borda/kaggle_sandbox/discussions/new
+    about: Ask and answer related questions
