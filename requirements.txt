@@ -3,6 +3,8 @@ pytorch-lightning>=1.4.0
 torchmetrics>=0.5
 python-gdcm
 pydicom
+matplotlib
+pandas
 https://github.com/shijianjian/EfficientNet-PyTorch-3D/archive/refs/heads/master.zip
 rising>=0.2.1  # loading / augmentation
 torchsummary

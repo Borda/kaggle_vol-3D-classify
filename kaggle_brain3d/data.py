@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 from functools import partial
+from multiprocessing import Pool
 from typing import Optional, Sequence, Union
 
 import pandas as pd
@@ -14,7 +15,6 @@ from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
 from kaggle_brain3d.utils import crop_volume, interpolate_volume, load_volume, resize_volume
-
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 # define transformations
@@ -79,25 +79,29 @@ class BrainScansDataset(Dataset):
         self.images = [p for p in self.images if os.path.exists(os.path.join(self.image_dir, p))]
         assert len(self.images) == len(self.labels), f"missing some images as {len(self.images)} != {len(self.labels)}"
 
-    def _load_image(self, rltv_path: str):
-        vol_path = os.path.join(self.cache_dir or "", f"{rltv_path}.pt")
+    @staticmethod
+    def _load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float):
+        vol_path = os.path.join(cache_dir or "", f"{rltv_path}.pt")
         if os.path.isfile(vol_path):
             return torch.load(vol_path)
-        img_path = os.path.join(self.image_dir, rltv_path)
+        img_path = os.path.join(image_dir, rltv_path)
         assert os.path.isdir(img_path)
         img = load_volume(img_path)
         img = interpolate_volume(img)
-        if self.crop_thr is not None:
-            img = crop_volume(img, thr=self.crop_thr)
-        if self.cache_dir:
+        if crop_thr is not None:
+            img = crop_volume(img, thr=crop_thr)
+        if cache_dir:
             os.makedirs(os.path.dirname(vol_path), exist_ok=True)
             torch.save(img, vol_path)
         return img
 
+    def load_image(self, rltv_path: str):
+        return BrainScansDataset._load_image(rltv_path, self.image_dir, self.cache_dir, self.crop_thr)
+
     def __getitem__(self, idx: int) -> dict:
         label = self.labels[idx]
         img_name = self.images[idx]
-        img = self._load_image(img_name)
+        img = self.load_image(img_name)
         # in case of predictions, return image name as label
         label = label if label is not None else img_name
         return {"data": img, "label": label}
@@ -169,16 +173,22 @@ class BrainScansDM(LightningDataModule):
             crop_thr=self.crop_thr,
         )
 
-        # pbar = tqdm(desc=f"preparing/caching scans @{self.num_workers} jobs", total=len(ds))
-        # pool = Pool(processes=self.num_workers)
-        # for _ in pool.imap_unordered(ds._load_image, ds.images):
-        #     pbar.update()
-        # pool.close()
-        # pool.join()
-        pbar = tqdm(desc=f"preparing/caching scans", total=len(ds))
-        for im in ds.images:
-            ds._load_image(im)
+        pbar = tqdm(desc=f"preparing/caching scans @{self.num_workers} jobs", total=len(ds))
+        pool = Pool(processes=self.num_workers)
+        _cache_img = partial(
+            BrainScansDataset._load_image,
+            image_dir=ds.image_dir,
+            cache_dir=ds.cache_dir,
+            crop_thr=ds.crop_thr,
+        )
+        for _ in pool.imap_unordered(_cache_img, ds.images):
             pbar.update()
+        pool.close()
+        pool.join()
+        # pbar = tqdm(desc="preparing/caching scans", total=len(ds))
+        # for im in ds.images:
+        #     ds._load_image(im)
+        #     pbar.update()
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
