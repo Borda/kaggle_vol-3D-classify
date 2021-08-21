@@ -6,12 +6,13 @@ from typing import Optional, Tuple
 import numpy as np
 import pydicom
 import torch
+import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from pydicom.pixel_data_handlers import apply_voi_lut
 from torch import Tensor
 
 
-def parse_index(dcm_path) -> int:
+def parse_name_index(dcm_path) -> int:
     res = re.match(r".*-(\d+)\.dcm", dcm_path).groups()
     assert len(res) == 1
     return int(res[0])
@@ -19,6 +20,7 @@ def parse_index(dcm_path) -> int:
 
 def load_dicom(path_file: str) -> Optional[np.ndarray]:
     dicom = pydicom.dcmread(path_file)
+    # TODO: adjust spacing in particular dimension according DICOM meta
     try:
         img = apply_voi_lut(dicom.pixel_array, dicom)
     except RuntimeError as err:
@@ -29,13 +31,13 @@ def load_dicom(path_file: str) -> Optional[np.ndarray]:
 
 def load_volume(path_volume: str, percentile: Optional[int] = 0.01) -> Tensor:
     path_slices = glob.glob(os.path.join(path_volume, '*.dcm'))
-    path_slices = sorted(path_slices, key=parse_index)
+    path_slices = sorted(path_slices, key=parse_name_index)
     vol = []
     for p_slice in path_slices:
         img = load_dicom(p_slice)
         if img is None:
             continue
-        vol.append(img)
+        vol.append(img.T)
     volume = torch.tensor(vol)
     if percentile is not None:
         # get extreme values
@@ -43,25 +45,36 @@ def load_volume(path_volume: str, percentile: Optional[int] = 0.01) -> Tensor:
         p_high = np.quantile(volume, 1 - percentile) if percentile else volume.max()
         # normalize
         volume = (volume.to(float) - p_low) / (p_high - p_low)
-    return volume
+    return volume.T
 
 
 def interpolate_volume(volume: Tensor) -> Tensor:
     vol_shape = volume.shape
-    assert vol_shape[1] == vol_shape[2]
-    if vol_shape[0] == vol_shape[1]:
+    d_new = min(vol_shape[:2])
+    # assert vol_shape[0] == vol_shape[1], f"mixed shape: {vol_shape}"
+    if d_new == vol_shape[2]:
         return volume
-    d0 = vol_shape[0] - 1
-    d1 = vol_shape[1]
-    vol_ = Tensor(d1, d1, d1)
-    step = float(d0) / d1
-    for i, pt in enumerate([i * step for i in range(d1)]):
-        i_0, i_1 = int(pt), int(np.ceil(pt))
-        if i_0 == i_1:
-            vol_[i, :, :] = volume[i_0, :, :]
-        else:
-            vol_[i, :, :] = (i_1 - pt) * volume[i_0, :, :] + (pt - i_0) * volume[i_1, :, :]
-    return vol_
+    return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=(vol_shape[0], vol_shape[1], d_new),
+                         mode="trilinear")[0, 0]
+
+
+def _tuple_int(t: Tensor) -> tuple:
+    return tuple(t.numpy().astype(int))
+
+
+def resize_volume(volume: Tensor, size: int = 128) -> Tensor:
+    shape_old = torch.tensor(volume.shape)
+    shape_new = torch.tensor([size] * 3)
+    scale = torch.max(shape_old.to(float) / shape_new)
+    shape_scale = shape_old / scale
+    # print(f"{shape_old} >> {shape_scale} >> {shape_new}")
+    vol_ = F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=_tuple_int(shape_scale), mode="trilinear")[0, 0]
+    offset = _tuple_int((shape_new - shape_scale) / 2)
+    volume = torch.zeros(*_tuple_int(shape_new))
+    shape_scale = _tuple_int(shape_scale)
+    volume[offset[0]:offset[0] + shape_scale[0], offset[1]:offset[1] + shape_scale[1],
+           offset[2]:offset[2] + shape_scale[2]] = vol_
+    return volume
 
 
 def find_dim_min(vec: list, thr: float) -> int:
@@ -107,7 +120,7 @@ def show_volume(
     x: Optional[int] = None,
     y: Optional[int] = None,
     z: Optional[int] = None,
-    fig_size: Tuple[int, int] = (14, 9)
+    fig_size: Tuple[int, int] = (14, 9),
 ):
     x, y, z = idx_middle_if_none(volume, x, y, z)
     fig, axarr = plt.subplots(nrows=2, ncols=3, figsize=fig_size)
