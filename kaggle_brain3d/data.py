@@ -2,17 +2,32 @@ import glob
 import logging
 import os
 from functools import partial
-from multiprocessing import Pool
 from typing import Optional, Sequence, Union
 
 import pandas as pd
+import rising.transforms as rtr
 import torch
 from pytorch_lightning import LightningDataModule
 from rising.loading import DataLoader
+from rising.random import DiscreteParameter
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
 from kaggle_brain3d.utils import crop_volume, interpolate_volume, load_volume, resize_volume
+
+
+SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
+# define transformations
+VAL_TRANSFORMS = [
+    rtr.NormZeroMeanUnitStd(keys=["data"]),
+]
+
+TRAIN_TRANSFORMS = [
+    rtr.NormZeroMeanUnitStd(keys=["data"]),
+    rtr.Rot90((0, 1, 2), keys=["data"], p=0.5),
+    rtr.Mirror(dims=DiscreteParameter([0, 1, 2]), keys=["data"]),
+    # rtr.Rotate(UniformParameter(0, 180), degree=True),
+]
 
 
 class BrainScansDataset(Dataset):
@@ -23,7 +38,7 @@ class BrainScansDataset(Dataset):
         df_table: Union[str, pd.DataFrame] = 'train_labels.csv',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         cache_dir: Optional[str] = None,
-        crop_thr: float = 100,
+        crop_thr: float = 1e-6,
         mode: str = 'train',
         split: float = 0.8,
         random_state=42,
@@ -106,7 +121,7 @@ class BrainScansDM(LightningDataModule):
         path_csv: str = 'train_labels.csv',
         cache_dir: str = '.',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
-        crop_thr: float = 100,
+        crop_thr: float = 1e-6,
         input_size: int = 64,
         batch_size: int = 4,
         num_workers: int = None,
@@ -154,12 +169,16 @@ class BrainScansDM(LightningDataModule):
             crop_thr=self.crop_thr,
         )
 
-        pbar = tqdm(desc=f"preparing/caching scans @{self.num_workers} jobs", total=len(ds))
-        pool = Pool(processes=self.num_workers)
-        for _ in pool.imap_unordered(ds._load_image, ds.images):
+        # pbar = tqdm(desc=f"preparing/caching scans @{self.num_workers} jobs", total=len(ds))
+        # pool = Pool(processes=self.num_workers)
+        # for _ in pool.imap_unordered(ds._load_image, ds.images):
+        #     pbar.update()
+        # pool.close()
+        # pool.join()
+        pbar = tqdm(desc=f"preparing/caching scans", total=len(ds))
+        for im in ds.images:
+            ds._load_image(im)
             pbar.update()
-        pool.close()
-        pool.join()
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""

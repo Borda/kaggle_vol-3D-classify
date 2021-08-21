@@ -87,18 +87,18 @@ def find_dim_max(vec: list, thr: float) -> int:
     return len(high) - np.argmax(high[::-1])
 
 
-def crop_volume(volume: Tensor, thr: float = 100) -> Tensor:
-    dims_x = torch.sum(torch.sum(volume, 1), -1)
-    dims_y = torch.sum(torch.sum(volume, 0), -1)
-    dims_z = torch.sum(torch.sum(volume, 0), 0)
+def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
+    dims_x = torch.sum(torch.sum(volume, 1), -1) / np.prod(volume.shape)
+    dims_y = torch.sum(torch.sum(volume, 0), -1) / np.prod(volume.shape)
+    dims_z = torch.sum(torch.sum(volume, 0), 0) / np.prod(volume.shape)
     return volume[find_dim_min(dims_x, thr):find_dim_max(dims_x, thr),
                   find_dim_min(dims_y, thr):find_dim_max(dims_y, thr),
                   find_dim_min(dims_z, thr):find_dim_max(dims_z, thr)]
 
 
-def show_volume_slice(axarr_, vol_slice, ax_name: str):
+def show_volume_slice(axarr_, vol_slice, ax_name: str, v_min_max: tuple = (0., 1.)):
     axarr_[0].set_title(f"axis: {ax_name}")
-    axarr_[0].imshow(vol_slice, cmap="gray", vmin=0, vmax=1)
+    axarr_[0].imshow(vol_slice, cmap="gray", vmin=v_min_max[0], vmax=v_min_max[1])
     axarr_[1].plot(torch.sum(vol_slice, 1), list(range(vol_slice.shape[0]))[::-1])
     axarr_[1].plot(list(range(vol_slice.shape[1])), torch.sum(vol_slice, 0))
     axarr_[1].set_aspect('equal')
@@ -121,12 +121,13 @@ def show_volume(
     y: Optional[int] = None,
     z: Optional[int] = None,
     fig_size: Tuple[int, int] = (14, 9),
+    v_min_max: tuple = (0., 1.),
 ):
     x, y, z = idx_middle_if_none(volume, x, y, z)
     fig, axarr = plt.subplots(nrows=2, ncols=3, figsize=fig_size)
     print(f"share: {volume.shape}, x={x}, y={y}, z={y}")
-    show_volume_slice(axarr[:, 0], volume[x, :, :], "X")
-    show_volume_slice(axarr[:, 1], volume[:, y, :], "Y")
-    show_volume_slice(axarr[:, 2], volume[:, :, z], "Z")
+    show_volume_slice(axarr[:, 0], volume[x, :, :], "X", v_min_max)
+    show_volume_slice(axarr[:, 1], volume[:, y, :], "Y", v_min_max)
+    show_volume_slice(axarr[:, 2], volume[:, :, z], "Z", v_min_max)
     # plt.show(fig)
     return fig
