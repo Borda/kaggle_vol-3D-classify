@@ -87,7 +87,7 @@ class BrainScansDataset(Dataset):
         vol_path = os.path.join(cache_dir or "", f"{rltv_path}.pt")
         if os.path.isfile(vol_path):
             try:
-                return torch.load(vol_path)
+                return torch.load(vol_path).to(torch.float32)
             except (EOFError, RuntimeError):
                 print(f"failed loading: {vol_path}")
         img_path = os.path.join(image_dir, rltv_path)
@@ -98,7 +98,7 @@ class BrainScansDataset(Dataset):
             img = crop_volume(img, thr=crop_thr)
         if cache_dir:
             os.makedirs(os.path.dirname(vol_path), exist_ok=True)
-            torch.save(img, vol_path)
+            torch.save(img.to(torch.float16), vol_path)
         return img
 
     def _load_image(self, rltv_path: str):
