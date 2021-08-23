@@ -49,6 +49,13 @@ def load_volume(path_volume: str, percentile: Optional[int] = 0.01) -> Tensor:
 
 
 def interpolate_volume(volume: Tensor) -> Tensor:
+    """Interpolate volume in last (Z) dimension
+
+    >>> vol = torch.rand(64, 64, 12)
+    >>> vol = interpolate_volume(vol)
+    >>> vol.shape
+    torch.Size([64, 64, 64])
+    """
     vol_shape = volume.shape
     d_new = min(vol_shape[:2])
     # assert vol_shape[0] == vol_shape[1], f"mixed shape: {vol_shape}"
@@ -56,46 +63,6 @@ def interpolate_volume(volume: Tensor) -> Tensor:
         return volume
     vol_size = (vol_shape[0], vol_shape[1], d_new)
     return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=vol_size, mode="trilinear", align_corners=False)[0, 0]
-
-
-def _tuple_int(t: Tensor) -> tuple:
-    return tuple(t.numpy().astype(int))
-
-
-def resize_volume(volume: Tensor, size: int = 128) -> Tensor:
-    shape_old = torch.tensor(volume.shape)
-    shape_new = torch.tensor([size] * 3)
-    scale = torch.max(shape_old.to(float) / shape_new)
-    shape_scale = shape_old / scale
-    # print(f"{shape_old} >> {shape_scale} >> {shape_new}")
-    vol_ = F.interpolate(
-        volume.unsqueeze(0).unsqueeze(0), size=_tuple_int(shape_scale), mode="trilinear", align_corners=False
-    )[0, 0]
-    offset = _tuple_int((shape_new - shape_scale) / 2)
-    volume = torch.zeros(*_tuple_int(shape_new), dtype=volume.dtype)
-    shape_scale = _tuple_int(shape_scale)
-    volume[offset[0]:offset[0] + shape_scale[0], offset[1]:offset[1] + shape_scale[1],
-           offset[2]:offset[2] + shape_scale[2]] = vol_
-    return volume
-
-
-def find_dim_min(vec: list, thr: float) -> int:
-    high = np.array(vec) >= thr
-    return np.argmax(high)
-
-
-def find_dim_max(vec: list, thr: float) -> int:
-    high = np.array(vec) >= thr
-    return len(high) - np.argmax(high[::-1])
-
-
-def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
-    dims_x = torch.sum(torch.sum(volume, 1), -1) / np.prod(volume.shape)
-    dims_y = torch.sum(torch.sum(volume, 0), -1) / np.prod(volume.shape)
-    dims_z = torch.sum(torch.sum(volume, 0), 0) / np.prod(volume.shape)
-    return volume[find_dim_min(dims_x, thr):find_dim_max(dims_x, thr),
-                  find_dim_min(dims_y, thr):find_dim_max(dims_y, thr),
-                  find_dim_min(dims_z, thr):find_dim_max(dims_z, thr)]
 
 
 def show_volume_slice(axarr_, vol_slice, ax_name: str, v_min_max: tuple = (0., 1.)):
