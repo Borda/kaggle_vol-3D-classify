@@ -5,23 +5,46 @@
 [![codecov](https://codecov.io/gh/Borda/kaggle_brain-tumor-3D/branch/main/graph/badge.svg)](https://codecov.io/gh/Borda/kaggle_brain-tumor-3D)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Borda/kaggle_brain-tumor-3D/main.svg)](https://results.pre-commit.ci/latest/github/Borda/kaggle_brain-tumor-3D/main)
 
-This is a simple template project to Kaggle participation...
+The goal of this challenge is to Predict the status of a genetic biomarker important for brain cancer treatment.
 
-### Expected content:
+![Sample brain visual](./assets/brain3D_spl1.png)
 
-- a core package with functionalities used across scripts and notebooks
-- tutorial/experiment notebooks (in _notebook_ folder if needed)
-- \[optional\] some functionality testing aka unittests or doctests
+With interpolation in Z dimension as it happens it is quite sparse:
+![Sample brain visual](./assets/brain3D_spl2.png)
 
-### What to write here:
+Each independent case has a dedicated folder identified by a five-digit number.
+Within each of these “case” folders, there are four sub-folders, each of them corresponding to each of the structural multi-parametric MRI (mpMRI) scans, in DICOM format.
+The exact mpMRI scans included are:
 
-- simple completion description + link
-- shortly what task it is to solve
-- list/link online sources
-- link kernels/submissions
+- **FLAIR**: Fluid Attenuated Inversion Recovery
+- **T1w**: T1-weighted pre-contrast
+- **T1Gd**: T1-weighted post-contrast
+- **T2**: T2-weighted
 
-## Showcase: some derived projects
+The labels/targets are `MGMT_value`:
 
-- [Cassava leaf disease classification](https://borda.github.io/kaggle_cassava-leaf-disease)
-- [Plant Pathology](https://borda.github.io/kaggle_plant-pathology) as multi-label classification on apple tree leaf
-- [iMet collection](https://github.com/Borda/kaggle_iMet-collection) as multi-label classification on museum objects
+![Label distribution](./assets/labels.png)
+
+## Experimentation
+
+### install this tooling
+
+A simple way how to use this basic functions:
+
+```bash
+! pip install https://github.com/Borda/kaggle_brain-tumor-3D/archive/refs/heads/main.zip
+```
+
+### run notebooks in Kaggle
+
+- [Brain Tumor Classif. ~ Lightning⚡EfficientNet3D](https://www.kaggle.com/jirkaborovec/brain-tumor-classif-lightning-efficientnet3d)
+
+### local notebooks
+
+- [Brain tumor classification meets PT-Lightning and EfficientNet3D](notebooks/Brain-tumor-classif_PT-Lightning_EfficientNet3D.ipynb)
+
+### some results
+
+Training progress with EfficientNet3D with training  for 10 epochs > over 96% validation accuracy:
+
+![Training process](./assets/metrics.png)

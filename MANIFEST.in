@@ -10,6 +10,7 @@ recursive-include kaggle_brain3d *.md
 # Include the license file
 include LICENSE
 
+recursive-include assets *.png
 exclude *.sh
 exclude *.toml
 exclude *.svg
