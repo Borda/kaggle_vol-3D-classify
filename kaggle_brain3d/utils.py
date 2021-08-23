@@ -22,7 +22,7 @@ def load_dicom(path_file: str) -> Optional[np.ndarray]:
     dicom = pydicom.dcmread(path_file)
     # TODO: adjust spacing in particular dimension according DICOM meta
     try:
-        img = apply_voi_lut(dicom.pixel_array, dicom)
+        img = apply_voi_lut(dicom.pixel_array, dicom).astype(np.float32)
     except RuntimeError as err:
         print(err)
         return None
@@ -38,13 +38,13 @@ def load_volume(path_volume: str, percentile: Optional[int] = 0.01) -> Tensor:
         if img is None:
             continue
         vol.append(img.T)
-    volume = torch.tensor(vol)
+    volume = torch.tensor(vol, dtype=torch.float32)
     if percentile is not None:
         # get extreme values
         p_low = np.quantile(volume, percentile) if percentile else volume.min()
         p_high = np.quantile(volume, 1 - percentile) if percentile else volume.max()
         # normalize
-        volume = (volume.to(float) - p_low) / (p_high - p_low)
+        volume = (volume - p_low) / (p_high - p_low)
     return volume.T
 
 
@@ -54,8 +54,8 @@ def interpolate_volume(volume: Tensor) -> Tensor:
     # assert vol_shape[0] == vol_shape[1], f"mixed shape: {vol_shape}"
     if d_new == vol_shape[2]:
         return volume
-    return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=(vol_shape[0], vol_shape[1], d_new),
-                         mode="trilinear")[0, 0]
+    vol_size = (vol_shape[0], vol_shape[1], d_new)
+    return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=vol_size, mode="trilinear", align_corners=False)[0, 0]
 
 
 def _tuple_int(t: Tensor) -> tuple:
@@ -68,9 +68,11 @@ def resize_volume(volume: Tensor, size: int = 128) -> Tensor:
     scale = torch.max(shape_old.to(float) / shape_new)
     shape_scale = shape_old / scale
     # print(f"{shape_old} >> {shape_scale} >> {shape_new}")
-    vol_ = F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=_tuple_int(shape_scale), mode="trilinear")[0, 0]
+    vol_ = F.interpolate(
+        volume.unsqueeze(0).unsqueeze(0), size=_tuple_int(shape_scale), mode="trilinear", align_corners=False
+    )[0, 0]
     offset = _tuple_int((shape_new - shape_scale) / 2)
-    volume = torch.zeros(*_tuple_int(shape_new))
+    volume = torch.zeros(*_tuple_int(shape_new), dtype=volume.dtype)
     shape_scale = _tuple_int(shape_scale)
     volume[offset[0]:offset[0] + shape_scale[0], offset[1]:offset[1] + shape_scale[1],
            offset[2]:offset[2] + shape_scale[2]] = vol_
@@ -125,7 +127,7 @@ def show_volume(
 ):
     x, y, z = idx_middle_if_none(volume, x, y, z)
     fig, axarr = plt.subplots(nrows=2, ncols=3, figsize=fig_size)
-    print(f"share: {volume.shape}, x={x}, y={y}, z={y}")
+    print(f"share: {volume.shape}, x={x}, y={y}, z={y}  >> {volume.dtype}")
     show_volume_slice(axarr[:, 0], volume[x, :, :], "X", v_min_max)
     show_volume_slice(axarr[:, 1], volume[:, y, :], "Y", v_min_max)
     show_volume_slice(axarr[:, 2], volume[:, :, z], "Z", v_min_max)

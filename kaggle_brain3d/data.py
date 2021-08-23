@@ -41,6 +41,7 @@ class BrainScansDataset(Dataset):
         crop_thr: float = 1e-6,
         mode: str = 'train',
         split: float = 0.8,
+        in_memory: bool = False,
         random_state=42,
     ):
         self.image_dir = image_dir
@@ -48,6 +49,7 @@ class BrainScansDataset(Dataset):
         self.cache_dir = cache_dir
         self.crop_thr = crop_thr
         self.mode = mode
+        self.in_memory = in_memory
 
         # set or load the config table
         if isinstance(df_table, pd.DataFrame):
@@ -73,17 +75,20 @@ class BrainScansDataset(Dataset):
         for _, row in self.table.iterrows():
             id_ = row["BraTS21ID"]
             name = id_ if isinstance(id_, str) else "%05d" % id_
-            self.images += [os.path.join(name, tp) for tp in self.scan_types]
-            self.labels += [row["MGMT_value"]] * len(self.scan_types)
-        # filter existing
-        self.images = [p for p in self.images if os.path.exists(os.path.join(self.image_dir, p))]
-        assert len(self.images) == len(self.labels), f"missing some images as {len(self.images)} != {len(self.labels)}"
+            imgs = [os.path.join(name, tp) for tp in self.scan_types]
+            imgs = [p for p in imgs if os.path.isdir(os.path.join(self.image_dir, p))]
+            self.images += imgs
+            self.labels += [row["MGMT_value"]] * len(imgs)
+        assert len(self.images) == len(self.labels)
 
     @staticmethod
-    def _load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float):
+    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float):
         vol_path = os.path.join(cache_dir or "", f"{rltv_path}.pt")
         if os.path.isfile(vol_path):
-            return torch.load(vol_path)
+            try:
+                return torch.load(vol_path)
+            except EOFError:
+                print(f"failed loading: {vol_path}")
         img_path = os.path.join(image_dir, rltv_path)
         assert os.path.isdir(img_path)
         img = load_volume(img_path)
@@ -95,25 +100,30 @@ class BrainScansDataset(Dataset):
             torch.save(img, vol_path)
         return img
 
-    def load_image(self, rltv_path: str):
-        return BrainScansDataset._load_image(rltv_path, self.image_dir, self.cache_dir, self.crop_thr)
+    def _load_image(self, rltv_path: str):
+        return BrainScansDataset.load_image(rltv_path, self.image_dir, self.cache_dir, self.crop_thr)
 
     def __getitem__(self, idx: int) -> dict:
         label = self.labels[idx]
-        img_name = self.images[idx]
-        img = self.load_image(img_name)
+        img_ = self.images[idx]
+        img = self._load_image(img_) if isinstance(img_, str) else img_
+        if self.in_memory:
+            self.images[idx] = img
         # in case of predictions, return image name as label
-        label = label if label is not None else img_name
-        return {"data": img, "label": label}
+        label = label if label is not None else img_
+        return {"data": img.unsqueeze(0), "label": label}
 
     def __len__(self) -> int:
         return len(self.images)
 
 
 def rising_resize(size: int = 64, **batch):
-    volume = batch["data"]
-    volume = resize_volume(volume, size)
-    batch.update({"data": volume})
+    img = batch["data"]
+    assert len(img.shape) == 4
+    img_ = []
+    for i in range(img.shape[0]):
+        img_.append(resize_volume(img[i], size))
+    batch.update({"data": torch.stack(img_, dim=0)})
     return batch
 
 
@@ -126,6 +136,7 @@ class BrainScansDM(LightningDataModule):
         cache_dir: str = '.',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         crop_thr: float = 1e-6,
+        in_memory: bool = False,
         input_size: int = 64,
         batch_size: int = 4,
         num_workers: int = None,
@@ -151,6 +162,7 @@ class BrainScansDM(LightningDataModule):
         self.input_size = input_size
         self.batch_size = batch_size
         self.split = split
+        self.in_memory = in_memory
         self.num_workers = num_workers if num_workers is not None else os.cpu_count()
 
         # need to be filled in setup()
@@ -161,7 +173,7 @@ class BrainScansDM(LightningDataModule):
         self.train_transforms = train_transforms
         self.valid_transforms = valid_transforms
 
-    def prepare_data(self):
+    def prepare_data(self, num_proc: int = 0):
         if not self.cache_dir:
             return
         ds = BrainScansDataset(
@@ -171,24 +183,28 @@ class BrainScansDM(LightningDataModule):
             split=1.0,
             cache_dir=self.cache_dir,
             crop_thr=self.crop_thr,
+            in_memory=False,
         )
-
-        pbar = tqdm(desc=f"preparing/caching scans @{self.num_workers} jobs", total=len(ds))
-        pool = Pool(processes=self.num_workers)
-        _cache_img = partial(
-            BrainScansDataset._load_image,
-            image_dir=ds.image_dir,
-            cache_dir=ds.cache_dir,
-            crop_thr=ds.crop_thr,
-        )
-        for _ in pool.imap_unordered(_cache_img, ds.images):
-            pbar.update()
-        pool.close()
-        pool.join()
-        # pbar = tqdm(desc="preparing/caching scans", total=len(ds))
         # for im in ds.images:
         #     ds._load_image(im)
-        #     pbar.update()
+
+        if num_proc > 1:
+            pool = Pool(processes=num_proc)
+            mapping = pool.imap_unordered
+        else:
+            pool = None
+            mapping = map
+
+        pbar = tqdm(desc=f"preparing/caching scans @{num_proc} jobs", total=len(ds))
+        _cache_img = partial(
+            BrainScansDataset.load_image, image_dir=ds.image_dir, cache_dir=ds.cache_dir, crop_thr=ds.crop_thr
+        )
+        for _ in mapping(_cache_img, ds.images):
+            pbar.update()
+
+        if pool:
+            pool.close()
+            pool.join()
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
@@ -199,6 +215,7 @@ class BrainScansDM(LightningDataModule):
             cache_dir=self.cache_dir,
             crop_thr=self.crop_thr,
             split=self.split,
+            in_memory=self.in_memory,
         )
         self.train_dataset = BrainScansDataset(**ds_defaults, mode='train')
         logging.info(f"training dataset: {len(self.train_dataset)}")
