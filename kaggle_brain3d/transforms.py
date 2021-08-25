@@ -1,5 +1,5 @@
 import random
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import rising.transforms as rtr
@@ -63,13 +63,19 @@ def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
                   find_dim_min(dims_z, thr):find_dim_max(dims_z, thr)]
 
 
-def rising_resize(size: int = 64, **batch):
+def rising_resize(size: int = 64, **batch) -> Dict[str, Any]:
     img = batch["data"]
     assert len(img.shape) == 4
     img_ = []
     for i in range(img.shape[0]):
         img_.append(resize_volume(img[i], size))
     batch.update({"data": torch.stack(img_, dim=0)})
+    return batch
+
+
+def rising_zero_mean(mean: float = 0.5, std: float = 0.2, **batch) -> Dict[str, Any]:
+    img = batch["data"]
+    batch.update({"data": (img - mean) / std})
     return batch
 
 

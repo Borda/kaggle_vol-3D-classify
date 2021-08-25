@@ -4,7 +4,7 @@ torchmetrics>=0.5
 python-gdcm
 pydicom
 matplotlib
-pandas
-https://github.com/shijianjian/EfficientNet-PyTorch-3D/archive/refs/heads/master.zip
+pandas>1.0
+monai>=0.6.0
 rising>=0.2.1  # loading / augmentation
 torchsummary

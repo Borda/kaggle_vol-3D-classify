@@ -11,6 +11,7 @@ import torch
 from pytorch_lightning import LightningDataModule
 from rising.loading import DataLoader
 from rising.random import DiscreteParameter
+from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
@@ -83,7 +84,7 @@ class BrainScansDataset(Dataset):
         assert len(self.images) == len(self.labels)
 
     @staticmethod
-    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float):
+    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float) -> Tensor:
         vol_path = os.path.join(cache_dir or "", f"{rltv_path}.pt")
         if os.path.isfile(vol_path):
             try:
@@ -101,7 +102,7 @@ class BrainScansDataset(Dataset):
             torch.save(img.to(torch.float16), vol_path)
         return img
 
-    def _load_image(self, rltv_path: str):
+    def _load_image(self, rltv_path: str) -> Tensor:
         return BrainScansDataset.load_image(rltv_path, self.image_dir, self.cache_dir, self.crop_thr)
 
     def __getitem__(self, idx: int) -> dict:
@@ -163,6 +164,8 @@ class BrainScansDM(LightningDataModule):
         self.test_dataset = None
         self.train_transforms = train_transforms
         self.valid_transforms = valid_transforms
+        self.image_mean = None
+        self.image_std = None
 
     def prepare_data(self, num_proc: int = 0):
         if not self.cache_dir:
@@ -186,16 +189,23 @@ class BrainScansDM(LightningDataModule):
             pool = None
             mapping = map
 
+        imgs_mean, imgs_std = [], []
         pbar = tqdm(desc=f"preparing/caching scans @{num_proc} jobs", total=len(ds))
         _cache_img = partial(
             BrainScansDataset.load_image, image_dir=ds.image_dir, cache_dir=ds.cache_dir, crop_thr=ds.crop_thr
         )
-        for _ in mapping(_cache_img, ds.images):
+        for img in mapping(_cache_img, ds.images):
+            imgs_mean.append(img.mean().item())
+            imgs_std.append(img.std().item())
             pbar.update()
 
         if pool:
             pool.close()
             pool.join()
+
+        self.image_mean = torch.mean(torch.tensor(imgs_mean))
+        self.image_std = torch.mean(torch.tensor(imgs_std))
+        print(f"Dataset >> mean: {self.image_mean} STD: {self.image_std}")
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
@@ -234,7 +244,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=True,
-            sample_transforms=partial(rising_resize, size=self.input_size),  # todo: resize to fix size
+            sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.train_transforms,
             pin_memory=torch.cuda.is_available(),
         )
@@ -245,7 +255,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.input_size),  # todo: resize to fix size
+            sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.valid_transforms,
             pin_memory=torch.cuda.is_available(),
         )
@@ -259,7 +269,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=0,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.input_size),  # todo: resize to fix size
+            sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.valid_transforms,
             pin_memory=torch.cuda.is_available(),
         )
