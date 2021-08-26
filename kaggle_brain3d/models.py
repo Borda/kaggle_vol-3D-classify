@@ -6,7 +6,7 @@ from pytorch_lightning import LightningModule
 from torch import nn, Tensor
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torchmetrics import Accuracy, F1, Precision
+from torchmetrics import AUROC, F1
 
 
 class LitBrainMRI(LightningModule):
@@ -14,7 +14,7 @@ class LitBrainMRI(LightningModule):
     def __init__(
         self,
         net: Union[nn.Module, str] = "efficientnet-b0",
-        lr: float = 1e-4,
+        lr: float = 1e-3,
         optimizer: Optional[Optimizer] = None,
     ):
         super().__init__()
@@ -24,14 +24,14 @@ class LitBrainMRI(LightningModule):
         else:
             self.name = net.__class__.__name__
         self.net = net
+        for param in self.net.parameters():
+            param.requires_grad = True
         self.learning_rate = lr
         self.optimizer = optimizer or Adam(self.net.parameters(), lr=self.learning_rate)
 
-        self.train_accuracy = Accuracy()
-        self.train_precision = Precision()
+        self.train_auroc = AUROC(num_classes=2, compute_on_step=False)
         self.train_f1_score = F1()
-        self.val_accuracy = Accuracy()
-        self.val_precision = Precision()
+        self.val_auroc = AUROC(num_classes=2, compute_on_step=False)
         self.val_f1_score = F1()
 
     def forward(self, x: Tensor) -> Tensor:
@@ -44,22 +44,28 @@ class LitBrainMRI(LightningModule):
         img, y = batch["data"], batch["label"]
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
-        self.log("train_loss", loss, prog_bar=False)
+        self.log("train/loss", loss, prog_bar=False)
         y_hat = F.softmax(y_hat)
-        self.log("train_acc", self.train_accuracy(y_hat, y), prog_bar=False)
-        self.log("train_prec", self.train_precision(y_hat, y), prog_bar=False)
-        self.log("train_f1", self.train_f1_score(y_hat, y), prog_bar=True)
+        self.log("train/f1", self.train_f1_score(y_hat, y), prog_bar=True)
+        self.train_auroc.update(y_hat, y)
+        try:  # ToDo: use balanced sampler
+            self.log('train/auroc', self.train_auroc, on_step=False, on_epoch=True)
+        except ValueError:
+            pass
         return loss
 
     def validation_step(self, batch, batch_idx):
         img, y = batch["data"], batch["label"]
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
-        self.log("valid_loss", loss, prog_bar=False)
+        self.log("valid/loss", loss, prog_bar=False)
         y_hat = F.softmax(y_hat)
-        self.log("valid_acc", self.val_accuracy(y_hat, y), prog_bar=True)
-        self.log("valid_prec", self.val_precision(y_hat, y), prog_bar=True)
-        self.log("valid_f1", self.val_f1_score(y_hat, y), prog_bar=True)
+        self.log("valid/f1", self.val_f1_score(y_hat, y), prog_bar=True)
+        self.val_auroc.update(y_hat, y)
+        try:  # ToDo: use balanced sampler
+            self.log('valid/auroc', self.val_auroc, on_step=False, on_epoch=True)
+        except ValueError:
+            pass
 
     def configure_optimizers(self):
         scheduler = CosineAnnealingLR(self.optimizer, self.trainer.max_epochs, 0)

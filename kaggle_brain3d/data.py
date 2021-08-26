@@ -15,20 +15,22 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
-from kaggle_brain3d.transforms import crop_volume, rising_resize
+from kaggle_brain3d.transforms import crop_volume, RandomAffine, rising_resize, rising_zero_mean
 from kaggle_brain3d.utils import interpolate_volume, load_volume
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
-# define transformations
-VAL_TRANSFORMS = [
-    rtr.NormZeroMeanUnitStd(keys=["data"]),
-]
+# Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
+rising_norm_intensity = partial(rising_zero_mean, mean=0.137, std=0.243)
 
+# define transformations
 TRAIN_TRANSFORMS = [
-    rtr.NormZeroMeanUnitStd(keys=["data"]),
     rtr.Rot90((0, 1, 2), keys=["data"], p=0.5),
     rtr.Mirror(dims=DiscreteParameter([0, 1, 2]), keys=["data"]),
-    # rtr.Rotate(UniformParameter(0, 180), degree=True),
+    RandomAffine(scale_range=(0.9, 1.1), rotation_range=(-10, 10), translation_range=(-0.1, 0.1)),
+    rising_norm_intensity,
+]
+VAL_TRANSFORMS = [
+    rising_norm_intensity,
 ]
 
 
@@ -195,6 +197,7 @@ class BrainScansDM(LightningDataModule):
             BrainScansDataset.load_image, image_dir=ds.image_dir, cache_dir=ds.cache_dir, crop_thr=ds.crop_thr
         )
         for img in mapping(_cache_img, ds.images):
+            # ToDo: Otsu threshold and compute mean/STD only on brain
             imgs_mean.append(img.mean().item())
             imgs_std.append(img.std().item())
             pbar.update()
