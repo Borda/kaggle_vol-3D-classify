@@ -29,7 +29,7 @@ def load_dicom(path_file: str) -> Optional[np.ndarray]:
     return img
 
 
-def load_volume(path_volume: str, percentile: Optional[int] = 0.01) -> Tensor:
+def load_volume(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
     path_slices = glob.glob(os.path.join(path_volume, '*.dcm'))
     path_slices = sorted(path_slices, key=parse_name_index)
     vol = []
@@ -92,9 +92,15 @@ def show_volume(
     fig_size: Tuple[int, int] = (14, 9),
     v_min_max: tuple = (0., 1.),
 ):
+    """Show volume in the three axis/cuts.
+
+    >>> show_volume(torch.rand((64, 64, 64), dtype=torch.float32))
+    shape: torch.Size([64, 64, 64]), x=32, y=32, z=32  >> torch.float32
+    <Figure size 1400x900 with 6 Axes>
+    """
     x, y, z = idx_middle_if_none(volume, x, y, z)
     fig, axarr = plt.subplots(nrows=2, ncols=3, figsize=fig_size)
-    print(f"share: {volume.shape}, x={x}, y={y}, z={y}  >> {volume.dtype}")
+    print(f"shape: {volume.shape}, x={x}, y={y}, z={y}  >> {volume.dtype}")
     show_volume_slice(axarr[:, 0], volume[x, :, :], "X", v_min_max)
     show_volume_slice(axarr[:, 1], volume[:, y, :], "Y", v_min_max)
     show_volume_slice(axarr[:, 2], volume[:, :, z], "Z", v_min_max)
