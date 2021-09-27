@@ -169,18 +169,21 @@ class BrainScansDM(LightningDataModule):
         self.image_mean = None
         self.image_std = None
 
-    def prepare_data(self, num_proc: int = 0):
+    def prepare_data(self, num_proc: int = 0, dataset: Optional[BrainScansDataset] = None):
         if not self.cache_dir:
             return
-        ds = BrainScansDataset(
-            image_dir=self.train_dir,
-            df_table=self.path_csv,
-            scan_types=self.scan_types,
-            split=1.0,
-            cache_dir=self.cache_dir,
-            crop_thr=self.crop_thr,
-            in_memory=False,
-        )
+
+        if not dataset:
+            logging.info("using temporary dataset from all train table")
+            dataset = BrainScansDataset(
+                image_dir=self.train_dir,
+                df_table=self.path_csv,
+                scan_types=self.scan_types,
+                split=1.0,
+                cache_dir=self.cache_dir,
+                crop_thr=self.crop_thr,
+                in_memory=False,
+            )
         # for im in ds.images:
         #     ds._load_image(im)
 
@@ -192,11 +195,14 @@ class BrainScansDM(LightningDataModule):
             mapping = map
 
         imgs_mean, imgs_std = [], []
-        pbar = tqdm(desc=f"preparing/caching scans @{num_proc} jobs", total=len(ds))
+        pbar = tqdm(desc=f"preparing/caching scans @{num_proc} jobs", total=len(dataset))
         _cache_img = partial(
-            BrainScansDataset.load_image, image_dir=ds.image_dir, cache_dir=ds.cache_dir, crop_thr=ds.crop_thr
+            BrainScansDataset.load_image,
+            image_dir=dataset.image_dir,
+            cache_dir=dataset.cache_dir,
+            crop_thr=dataset.crop_thr
         )
-        for img in mapping(_cache_img, ds.images):
+        for img in mapping(_cache_img, dataset.images):
             # ToDo: Otsu threshold and compute mean/STD only on brain
             imgs_mean.append(img.mean().item())
             imgs_std.append(img.std().item())
@@ -266,7 +272,7 @@ class BrainScansDM(LightningDataModule):
     def test_dataloader(self) -> Optional[DataLoader]:
         if not self.test_dataset:
             logging.warning('no testing images found')
-            return None
+            return
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,

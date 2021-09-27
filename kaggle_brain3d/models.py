@@ -78,9 +78,9 @@ class LitBrainMRI(LightningModule):
         else:
             self.name = net.__class__.__name__
         self.net = net
-        self.pretrained_params = pretrained_params
+        self.pretrained_params = set(pretrained_params) if pretrained_params else set()
         for n, param in self.net.named_parameters():
-            param.requires_grad = bool(pretrained_params and n not in pretrained_params)
+            param.requires_grad = bool(n not in self.pretrained_params)
         self.learning_rate = lr
         self.optimizer = optimizer or Adam(self.net.parameters(), lr=self.learning_rate)
 
