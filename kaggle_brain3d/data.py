@@ -86,9 +86,13 @@ class BrainScansDataset(Dataset):
         assert len(self.images) == len(self.labels)
 
     @staticmethod
-    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float) -> Tensor:
-        vol_path = os.path.join(cache_dir or "", f"{rltv_path}.pt")
-        if os.path.isfile(vol_path):
+    def cached_image(rltv_path: str, cache_dir: str) -> str:
+        return os.path.join(cache_dir or "", f"{rltv_path}.pt")
+
+    @staticmethod
+    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float, overwrite: bool = False) -> Tensor:
+        vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
+        if os.path.isfile(vol_path) and not overwrite:
             try:
                 return torch.load(vol_path).to(torch.float32)
             except (EOFError, RuntimeError):
@@ -101,7 +105,8 @@ class BrainScansDataset(Dataset):
             img = crop_volume(img, thr=crop_thr)
         if cache_dir:
             os.makedirs(os.path.dirname(vol_path), exist_ok=True)
-            torch.save(img.to(torch.float16), vol_path)
+            if not os.path.isfile(vol_path) or overwrite:
+                torch.save(img.to(torch.float16), vol_path)
         return img
 
     def _load_image(self, rltv_path: str) -> Tensor:
@@ -169,7 +174,22 @@ class BrainScansDM(LightningDataModule):
         self.image_mean = None
         self.image_std = None
 
-    def prepare_data(self, num_proc: int = 0, dataset: Optional[BrainScansDataset] = None):
+    @staticmethod
+    def check_image_cache(
+        rltv_path: str,
+        image_dir: str,
+        cache_dir: str,
+        overwrite: bool = False,
+        **kwargs_load,
+    ) -> Optional[Tensor]:
+        vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
+        if os.path.isfile(vol_path) and not overwrite:
+            return None
+        return BrainScansDataset.load_image(
+            rltv_path, image_dir=image_dir, cache_dir=cache_dir, overwrite=overwrite, **kwargs_load
+        )
+
+    def prepare_data(self, num_proc: int = 0, dataset: Optional[BrainScansDataset] = None, overwrite: bool = False):
         if not self.cache_dir:
             return
 
@@ -197,23 +217,25 @@ class BrainScansDM(LightningDataModule):
         imgs_mean, imgs_std = [], []
         pbar = tqdm(desc=f"preparing/caching scans @{num_proc} jobs", total=len(dataset))
         _cache_img = partial(
-            BrainScansDataset.load_image,
+            BrainScansDM.check_image_cache,
             image_dir=dataset.image_dir,
             cache_dir=dataset.cache_dir,
-            crop_thr=dataset.crop_thr
+            crop_thr=dataset.crop_thr,
+            overwrite=overwrite,
         )
         for img in mapping(_cache_img, dataset.images):
             # ToDo: Otsu threshold and compute mean/STD only on brain
-            imgs_mean.append(img.mean().item())
-            imgs_std.append(img.std().item())
+            if img:
+                imgs_mean.append(img.mean().item())
+                imgs_std.append(img.std().item())
             pbar.update()
 
         if pool:
             pool.close()
             pool.join()
 
-        self.image_mean = torch.mean(torch.tensor(imgs_mean))
-        self.image_std = torch.mean(torch.tensor(imgs_std))
+        self.image_mean = torch.mean(torch.tensor(imgs_mean)) if imgs_mean else None
+        self.image_std = torch.mean(torch.tensor(imgs_std)) if imgs_std else None
         print(f"Dataset >> mean: {self.image_mean} STD: {self.image_std}")
 
     def setup(self, *_, **__) -> None:
