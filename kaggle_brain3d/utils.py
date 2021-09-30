@@ -48,20 +48,24 @@ def load_volume(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
     return volume.T
 
 
-def interpolate_volume(volume: Tensor) -> Tensor:
+def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:
     """Interpolate volume in last (Z) dimension
 
     >>> vol = torch.rand(64, 64, 12)
-    >>> vol = interpolate_volume(vol)
-    >>> vol.shape
+    >>> vol2 = interpolate_volume(vol)
+    >>> vol2.shape
     torch.Size([64, 64, 64])
+    >>> vol2 = interpolate_volume(vol, vol_size=(64, 64, 24))
+    >>> vol2.shape
+    torch.Size([64, 64, 24])
     """
-    vol_shape = volume.shape
-    d_new = min(vol_shape[:2])
+    vol_shape = tuple(volume.shape)
+    if not vol_size:
+        d_new = min(vol_shape[:2])
+        vol_size = (vol_shape[0], vol_shape[1], d_new)
     # assert vol_shape[0] == vol_shape[1], f"mixed shape: {vol_shape}"
-    if d_new == vol_shape[2]:
+    if vol_shape == vol_size:
         return volume
-    vol_size = (vol_shape[0], vol_shape[1], d_new)
     return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=vol_size, mode="trilinear", align_corners=False)[0, 0]
 
 

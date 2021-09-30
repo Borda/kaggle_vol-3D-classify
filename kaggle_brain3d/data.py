@@ -3,7 +3,7 @@ import logging
 import os
 from functools import partial
 from multiprocessing import Pool
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import pandas as pd
 import rising.transforms as rtr
@@ -42,6 +42,7 @@ class BrainScansDataset(Dataset):
         df_table: Union[str, pd.DataFrame] = 'train_labels.csv',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         cache_dir: Optional[str] = None,
+        vol_size: Optional[Tuple[int, int, int]] = None,
         crop_thr: float = 1e-6,
         mode: str = 'train',
         split: float = 0.8,
@@ -51,6 +52,7 @@ class BrainScansDataset(Dataset):
         self.image_dir = image_dir
         self.scan_types = scan_types
         self.cache_dir = cache_dir
+        self.vol_size = vol_size
         self.crop_thr = crop_thr
         self.mode = mode
         self.in_memory = in_memory
@@ -90,7 +92,14 @@ class BrainScansDataset(Dataset):
         return os.path.join(cache_dir or "", f"{rltv_path}.pt")
 
     @staticmethod
-    def load_image(rltv_path: str, image_dir: str, cache_dir: str, crop_thr: float, overwrite: bool = False) -> Tensor:
+    def load_image(
+        rltv_path: str,
+        image_dir: str,
+        cache_dir: str,
+        crop_thr: float,
+        vol_size: Optional[Tuple[int, int, int]] = None,
+        overwrite: bool = False
+    ) -> Tensor:
         vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
         if os.path.isfile(vol_path) and not overwrite:
             try:
@@ -100,7 +109,7 @@ class BrainScansDataset(Dataset):
         img_path = os.path.join(image_dir, rltv_path)
         assert os.path.isdir(img_path)
         img = load_volume(img_path)
-        img = interpolate_volume(img)
+        img = interpolate_volume(img, vol_size=vol_size)
         if crop_thr is not None:
             img = crop_volume(img, thr=crop_thr)
         if cache_dir:
@@ -110,7 +119,13 @@ class BrainScansDataset(Dataset):
         return img
 
     def _load_image(self, rltv_path: str) -> Tensor:
-        return BrainScansDataset.load_image(rltv_path, self.image_dir, self.cache_dir, self.crop_thr)
+        return BrainScansDataset.load_image(
+            rltv_path,
+            image_dir=self.image_dir,
+            cache_dir=self.cache_dir,
+            crop_thr=self.crop_thr,
+            vol_size=self.vol_size
+        )
 
     def __getitem__(self, idx: int) -> dict:
         label = self.labels[idx]
@@ -134,6 +149,7 @@ class BrainScansDM(LightningDataModule):
         path_csv: str = 'train_labels.csv',
         cache_dir: str = '.',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
+        vol_size: Optional[Tuple[int, int, int]] = None,
         crop_thr: float = 1e-6,
         in_memory: bool = False,
         input_size: int = 64,
@@ -149,6 +165,7 @@ class BrainScansDM(LightningDataModule):
         self.train_dir = os.path.join(data_dir, 'train')
         self.test_dir = os.path.join(data_dir, 'test')
         self.cache_dir = cache_dir
+        self.vol_size = vol_size
 
         if not os.path.isfile(path_csv):
             path_csv = os.path.join(data_dir, path_csv)
@@ -174,11 +191,20 @@ class BrainScansDM(LightningDataModule):
         self.image_mean = None
         self.image_std = None
 
+        # some other configs
+        self.ds_defaults = dict(
+            scan_types=self.scan_types,
+            cache_dir=self.cache_dir,
+            vol_size=self.vol_size,
+            crop_thr=self.crop_thr,
+        )
+
     @staticmethod
     def check_image_cache(
         rltv_path: str,
         image_dir: str,
         cache_dir: str,
+        vol_size: Optional[Tuple[int, int, int]] = None,
         overwrite: bool = False,
         **kwargs_load,
     ) -> Optional[Tensor]:
@@ -186,7 +212,7 @@ class BrainScansDM(LightningDataModule):
         if os.path.isfile(vol_path) and not overwrite:
             return None
         return BrainScansDataset.load_image(
-            rltv_path, image_dir=image_dir, cache_dir=cache_dir, overwrite=overwrite, **kwargs_load
+            rltv_path, image_dir=image_dir, cache_dir=cache_dir, vol_size=vol_size, overwrite=overwrite, **kwargs_load
         )
 
     def prepare_data(self, num_proc: int = 0, dataset: Optional[BrainScansDataset] = None, overwrite: bool = False):
@@ -198,11 +224,9 @@ class BrainScansDM(LightningDataModule):
             dataset = BrainScansDataset(
                 image_dir=self.train_dir,
                 df_table=self.path_csv,
-                scan_types=self.scan_types,
                 split=1.0,
-                cache_dir=self.cache_dir,
-                crop_thr=self.crop_thr,
                 in_memory=False,
+                **self.ds_defaults,
             )
         # for im in ds.images:
         #     ds._load_image(im)
@@ -240,18 +264,16 @@ class BrainScansDM(LightningDataModule):
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
-        ds_defaults = dict(
+        ds_training = dict(
             image_dir=self.train_dir,
             df_table=self.path_csv,
-            scan_types=self.scan_types,
-            cache_dir=self.cache_dir,
-            crop_thr=self.crop_thr,
             split=self.split,
             in_memory=self.in_memory,
+            **self.ds_defaults,
         )
-        self.train_dataset = BrainScansDataset(**ds_defaults, mode='train')
+        self.train_dataset = BrainScansDataset(**ds_training, mode='train')
         logging.info(f"training dataset: {len(self.train_dataset)}")
-        self.valid_dataset = BrainScansDataset(**ds_defaults, mode='valid')
+        self.valid_dataset = BrainScansDataset(**ds_training, mode='valid')
         logging.info(f"validation dataset: {len(self.valid_dataset)}")
 
         if not os.path.isdir(self.test_dir):
@@ -261,11 +283,9 @@ class BrainScansDM(LightningDataModule):
         self.test_dataset = BrainScansDataset(
             image_dir=self.test_dir,
             df_table=pd.DataFrame(self.test_table),
-            scan_types=self.scan_types,
-            cache_dir=self.cache_dir,
-            crop_thr=self.crop_thr,
             split=0,
-            mode='test'
+            mode='test',
+            **self.ds_defaults,
         )
         logging.info(f"test dataset: {len(self.test_dataset)}")
 
