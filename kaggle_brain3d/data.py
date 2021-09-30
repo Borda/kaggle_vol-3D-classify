@@ -158,6 +158,7 @@ class BrainScansDM(LightningDataModule):
         train_transforms=None,
         valid_transforms=None,
         split: float = 0.8,
+        **kwargs_dataloader,
     ):
         super().__init__()
         # path configurations
@@ -180,6 +181,7 @@ class BrainScansDM(LightningDataModule):
         self.split = split
         self.in_memory = in_memory
         self.num_workers = num_workers if num_workers is not None else os.cpu_count()
+        self.kwargs_dataloader = kwargs_dataloader
 
         # need to be filled in setup()
         self.train_dataset = None
@@ -297,7 +299,7 @@ class BrainScansDM(LightningDataModule):
             shuffle=True,
             sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.train_transforms,
-            pin_memory=torch.cuda.is_available(),
+            **self.kwargs_dataloader,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -308,7 +310,7 @@ class BrainScansDM(LightningDataModule):
             shuffle=False,
             sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.valid_transforms,
-            pin_memory=torch.cuda.is_available(),
+            **self.kwargs_dataloader,
         )
 
     def test_dataloader(self) -> Optional[DataLoader]:
@@ -322,5 +324,5 @@ class BrainScansDM(LightningDataModule):
             shuffle=False,
             sample_transforms=partial(rising_resize, size=self.input_size),
             batch_transforms=self.valid_transforms,
-            pin_memory=torch.cuda.is_available(),
+            **self.kwargs_dataloader,
         )
