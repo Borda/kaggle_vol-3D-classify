@@ -1,5 +1,5 @@
 import random
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import rising.transforms as rtr
@@ -63,13 +63,26 @@ def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
                   find_dim_min(dims_z, thr):find_dim_max(dims_z, thr)]
 
 
-def rising_resize(size: int = 64, **batch) -> Dict[str, Any]:
-    img = batch["data"]
-    assert len(img.shape) == 4
-    img_ = []
-    for i in range(img.shape[0]):
-        img_.append(resize_volume(img[i], size))
-    batch.update({"data": torch.stack(img_, dim=0)})
+def rising_resize(size: Union[str, Tuple] = 64, **batch) -> Dict[str, Any]:
+    """Augmentation.
+
+    >>> batch = {"data": torch.rand(2, 64, 64, 12)}
+    >>> batch2 = rising_resize(32, **batch)
+    >>> batch2["data"].shape
+    torch.Size([2, 32, 32, 32])
+    >>> batch2 = rising_resize((32, 32, 16), **batch)
+    >>> batch2["data"].shape
+    torch.Size([2, 32, 32, 16])
+    """
+    data = batch["data"]
+    assert len(data.shape) == 4
+    if isinstance(size, int):
+        size = (size, size, size)
+    imgs = [
+        F.interpolate(img.unsqueeze(0).unsqueeze(0), size=size, mode="trilinear", align_corners=False)[0, 0]
+        for img in data
+    ]
+    batch.update({"data": torch.stack(imgs, dim=0)})
     return batch
 
 

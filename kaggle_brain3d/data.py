@@ -43,7 +43,7 @@ class BrainScansDataset(Dataset):
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         cache_dir: Optional[str] = None,
         vol_size: Optional[Tuple[int, int, int]] = None,
-        crop_thr: float = 1e-6,
+        crop_thr: Optional[float] = 1e-6,
         mode: str = 'train',
         split: float = 0.8,
         in_memory: bool = False,
@@ -95,8 +95,8 @@ class BrainScansDataset(Dataset):
     def load_image(
         rltv_path: str,
         image_dir: str,
-        cache_dir: str,
-        crop_thr: float,
+        cache_dir: Optional[str] = None,
+        crop_thr: Optional[float] = None,
         vol_size: Optional[Tuple[int, int, int]] = None,
         overwrite: bool = False
     ) -> Tensor:
@@ -149,12 +149,11 @@ class BrainScansDM(LightningDataModule):
         path_csv: str = 'train_labels.csv',
         cache_dir: str = '.',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
-        vol_size: Optional[Tuple[int, int, int]] = None,
+        vol_size: Union[None, int, Tuple[int, int, int]] = 64,
         crop_thr: float = 1e-6,
         in_memory: bool = False,
-        input_size: int = 64,
         batch_size: int = 4,
-        num_workers: int = None,
+        num_workers: Optional[int] = None,
         train_transforms=None,
         valid_transforms=None,
         split: float = 0.8,
@@ -166,7 +165,7 @@ class BrainScansDM(LightningDataModule):
         self.train_dir = os.path.join(data_dir, 'train')
         self.test_dir = os.path.join(data_dir, 'test')
         self.cache_dir = cache_dir
-        self.vol_size = vol_size
+        self.vol_size = (vol_size, vol_size, vol_size) if isinstance(vol_size, int) else vol_size
 
         if not os.path.isfile(path_csv):
             path_csv = os.path.join(data_dir, path_csv)
@@ -176,7 +175,6 @@ class BrainScansDM(LightningDataModule):
         # other configs
         self.scan_types = scan_types
         self.crop_thr = crop_thr
-        self.input_size = input_size
         self.batch_size = batch_size
         self.split = split
         self.in_memory = in_memory
@@ -251,7 +249,7 @@ class BrainScansDM(LightningDataModule):
         )
         for img in mapping(_cache_img, dataset.images):
             # ToDo: Otsu threshold and compute mean/STD only on brain
-            if img:
+            if img is not None:
                 imgs_mean.append(img.mean().item())
                 imgs_std.append(img.std().item())
             pbar.update()
@@ -297,7 +295,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=True,
-            sample_transforms=partial(rising_resize, size=self.input_size),
+            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.train_transforms,
             **self.kwargs_dataloader,
         )
@@ -308,7 +306,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.input_size),
+            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.valid_transforms,
             **self.kwargs_dataloader,
         )
@@ -322,7 +320,7 @@ class BrainScansDM(LightningDataModule):
             batch_size=self.batch_size,
             num_workers=0,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.input_size),
+            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.valid_transforms,
             **self.kwargs_dataloader,
         )
