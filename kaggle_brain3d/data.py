@@ -40,7 +40,7 @@ class BrainScansDataset(Dataset):
         self,
         image_dir: str = 'train',
         df_table: Union[str, pd.DataFrame] = 'train_labels.csv',
-        scan_types: Sequence[str] = ("FLAIR", "T2w"),
+        scan_types: Union[str, Sequence[str]] = ("FLAIR", "T2w"),
         cache_dir: Optional[str] = None,
         vol_size: Optional[Tuple[int, int, int]] = None,
         crop_thr: Optional[float] = 1e-6,
@@ -50,7 +50,7 @@ class BrainScansDataset(Dataset):
         random_state=42,
     ):
         self.image_dir = image_dir
-        self.scan_types = scan_types
+        self.scan_types = (scan_types, ) if isinstance(scan_types, str) else scan_types
         self.cache_dir = cache_dir
         self.vol_size = vol_size
         self.crop_thr = crop_thr
@@ -124,7 +124,7 @@ class BrainScansDataset(Dataset):
             image_dir=self.image_dir,
             cache_dir=self.cache_dir,
             crop_thr=self.crop_thr,
-            vol_size=self.vol_size
+            vol_size=self.vol_size,
         )
 
     def __getitem__(self, idx: int) -> dict:
@@ -150,7 +150,7 @@ class BrainScansDM(LightningDataModule):
         cache_dir: str = '.',
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         vol_size: Union[None, int, Tuple[int, int, int]] = 64,
-        crop_thr: float = 1e-6,
+        crop_thr: Optional[float] = 1e-6,
         in_memory: bool = False,
         batch_size: int = 4,
         num_workers: Optional[int] = None,
