@@ -2,7 +2,7 @@ import os
 
 import pytest
 from monai.networks.nets import EfficientNetBN, resnet18
-from pytorch_lightning import Trainer
+from pytorch_lightning import seed_everything, Trainer
 
 from kaggle_brain3d.data import BrainScansDM
 from kaggle_brain3d.models import LitBrainMRI
@@ -16,8 +16,10 @@ def test_create_model(net):
     LitBrainMRI(net=net)
 
 
-def test_train_model(tmpdir):
-    _generate_synthetic_dataset(tmpdir, scans='FLAIR', nb_users=30)
+@pytest.mark.parametrize("prepare", [True, False])
+def test_train_model(tmpdir, prepare):
+    seed_everything(42)
+    _generate_synthetic_dataset(tmpdir, scans='FLAIR', nb_users=20)
 
     dm = BrainScansDM(
         data_dir=tmpdir,
@@ -29,7 +31,8 @@ def test_train_model(tmpdir):
         # train_transforms=rtr.Compose(TRAIN_TRANSFORMS, transform_call=default_transform_call),
         # valid_transforms=rtr.Compose(VAL_TRANSFORMS, transform_call=default_transform_call),
     )
-    dm.prepare_data()
+    if prepare:
+        dm.prepare_data()
     net = resnet18(pretrained=False, spatial_dims=3, n_input_channels=1, num_classes=2)
     model = LitBrainMRI(net=net)
 

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Sequence, Tuple, Type, Union
 
 import pytorch_lightning as pl
 import torch
@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from monai.networks.nets import EfficientNetBN, ResNet, resnet18
 from pytorch_lightning import Callback, LightningModule
 from torch import nn, Tensor
-from torch.optim import Adam, Optimizer
+from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchmetrics import AUROC, F1
 
@@ -69,7 +69,7 @@ class LitBrainMRI(LightningModule):
         net: Union[nn.Module, str] = "efficientnet-b0",
         pretrained_params: Optional[Sequence[str]] = None,
         lr: float = 1e-3,
-        optimizer: Optional[Optimizer] = None,
+        optimizer: Optional[Type[Optimizer]] = None,
     ):
         super().__init__()
         if isinstance(net, str):
@@ -82,7 +82,7 @@ class LitBrainMRI(LightningModule):
         for n, param in self.net.named_parameters():
             param.requires_grad = bool(n not in self.pretrained_params)
         self.learning_rate = lr
-        self.optimizer = optimizer or Adam(self.net.parameters(), lr=self.learning_rate)
+        self.optimizer = optimizer or AdamW
 
         self.train_auroc = AUROC(num_classes=2, compute_on_step=False)
         self.train_f1_score = F1()
@@ -92,7 +92,8 @@ class LitBrainMRI(LightningModule):
     def forward(self, x: Tensor) -> Tensor:
         return self.net(x)
 
-    def compute_loss(self, y_hat: Tensor, y: Tensor):
+    @staticmethod
+    def compute_loss(y_hat: Tensor, y: Tensor):
         return F.cross_entropy(y_hat, y)
 
     def training_step(self, batch, batch_idx):
@@ -123,5 +124,6 @@ class LitBrainMRI(LightningModule):
             pass
 
     def configure_optimizers(self):
-        scheduler = CosineAnnealingLR(self.optimizer, self.trainer.max_epochs, 0)
-        return [self.optimizer], [scheduler]
+        optimizer = self.optimizer(self.net.parameters(), lr=self.learning_rate)
+        scheduler = CosineAnnealingLR(optimizer, self.trainer.max_epochs, 0)
+        return [optimizer], [scheduler]
