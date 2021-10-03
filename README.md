@@ -42,6 +42,7 @@ A simple way how to use this basic functions:
 ### local notebooks
 
 - [Brain tumor classification meets PT-Lightning and EfficientNet3D](notebooks/Brain-tumor-classif_PT-Lightning_EfficientNet3D.ipynb)
+- [Brain tumor classification meets PT-Lightning and pre-trained ResNet3D](notebooks/Brain-tumor-classif_PT-Lightning_ResNet3D.ipynb)
 
 ### some results
 
