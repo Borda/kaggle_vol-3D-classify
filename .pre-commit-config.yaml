@@ -23,7 +23,7 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.23.1
+    rev: v2.29.0
     hooks:
       - id: pyupgrade
         args: [--py36-plus]
@@ -42,7 +42,7 @@ repos:
         name: formatting
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.7
+    rev: 0.7.10
     hooks:
       - id: mdformat
         additional_dependencies:
