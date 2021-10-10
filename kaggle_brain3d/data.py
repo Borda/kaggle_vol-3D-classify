@@ -3,7 +3,7 @@ import logging
 import os
 from functools import partial
 from multiprocessing import Pool
-from typing import Optional, Sequence, Tuple, Union, Dict, Any
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import pandas as pd
 import rising.transforms as rtr
@@ -196,7 +196,6 @@ class BrainScansDM(LightningDataModule):
         # some other configs
         return dict(
             scan_types=self.scan_types,
-            cache_dir=self.cache_dir,
             vol_size=self.vol_size,
             crop_thr=self.crop_thr,
         )
@@ -276,6 +275,7 @@ class BrainScansDM(LightningDataModule):
         """Prepare datasets"""
         ds_training = dict(
             image_dir=self.train_dir,
+            cache_dir=self.cache_dir,
             df_table=self.path_csv,
             split=self.split,
             in_memory=self.in_memory,

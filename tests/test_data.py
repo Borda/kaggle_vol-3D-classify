@@ -17,10 +17,14 @@ def _generate_sample_volume(path_folder: str, nb: int = 10):
 
 
 def _generate_synthetic_dataset(
-    path_folder: str, nb_users: int = 10, scans: Union[str, Sequence[str]] = 'FLAIR', dim_z: int = 20
+    path_folder: str,
+    phase: str = "train",
+    nb_users: int = 10,
+    scans: Union[str, Sequence[str]] = 'FLAIR',
+    dim_z: int = 20
 ):
     random.seed(7)
-    path_imgs = os.path.join(path_folder, 'train')
+    path_imgs = os.path.join(path_folder, phase)
     labels = []
     for i in range(nb_users):
         user = "%05d" % i

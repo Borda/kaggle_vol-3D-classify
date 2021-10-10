@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Optional, Sequence, Tuple, Type, Union
 
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
@@ -9,7 +10,9 @@ from pytorch_lightning import Callback, LightningModule
 from torch import nn, Tensor
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import DataLoader
 from torchmetrics import AUROC, F1
+from tqdm.auto import tqdm
 
 
 def create_pretrained_medical_resnet(
@@ -127,3 +130,21 @@ class LitBrainMRI(LightningModule):
         optimizer = self.optimizer(self.net.parameters(), lr=self.learning_rate)
         scheduler = CosineAnnealingLR(optimizer, self.trainer.max_epochs, 0)
         return [optimizer], [scheduler]
+
+
+def make_submission(model: LightningModule, dataloader: DataLoader, device: str = "cpu") -> pd.DataFrame:
+    model.eval()
+    model.to(device)
+    submission = []
+
+    for batch in tqdm(dataloader, total=len(dataloader)):
+        imgs = batch.get("data")
+        with torch.no_grad():
+            preds = model(imgs.to(device))
+        probs = torch.nn.functional.softmax(preds)
+        submission += [
+            dict(BraTS21ID=n.split("/")[0], MRI_type=n.split("/")[-1], MGMT_value=p.item())
+            for n, p in zip(batch.get("label"), probs[:, 1])
+        ]
+
+    return pd.DataFrame(submission)
