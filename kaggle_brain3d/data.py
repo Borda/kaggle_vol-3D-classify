@@ -3,7 +3,7 @@ import logging
 import os
 from functools import partial
 from multiprocessing import Pool
-from typing import Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union, Dict, Any
 
 import pandas as pd
 import rising.transforms as rtr
@@ -191,12 +191,22 @@ class BrainScansDM(LightningDataModule):
         self.image_mean = None
         self.image_std = None
 
+    @property
+    def ds_defaults(self) -> Dict[str, Any]:
         # some other configs
-        self.ds_defaults = dict(
+        return dict(
             scan_types=self.scan_types,
             cache_dir=self.cache_dir,
             vol_size=self.vol_size,
             crop_thr=self.crop_thr,
+        )
+
+    @property
+    def dl_defaults(self) -> Dict[str, Any]:
+        return dict(
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            sample_transforms=partial(rising_resize, size=self.vol_size),
         )
 
     @staticmethod
@@ -279,7 +289,7 @@ class BrainScansDM(LightningDataModule):
         if not os.path.isdir(self.test_dir):
             return
         ls_cases = [os.path.basename(p) for p in glob.glob(os.path.join(self.test_dir, '*'))]
-        self.test_table = [dict(BraTS21ID=n, MGMT_value=0.5) for n in ls_cases]
+        self.test_table = [dict(BraTS21ID=n, MGMT_value=None) for n in ls_cases]
         self.test_dataset = BrainScansDataset(
             image_dir=self.test_dir,
             df_table=pd.DataFrame(self.test_table),
@@ -292,22 +302,18 @@ class BrainScansDM(LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.train_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
             shuffle=True,
-            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.train_transforms,
+            **self.dl_defaults,
             **self.kwargs_dataloader,
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             self.valid_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.valid_transforms,
+            **self.dl_defaults,
             **self.kwargs_dataloader,
         )
 
@@ -317,10 +323,8 @@ class BrainScansDM(LightningDataModule):
             return
         return DataLoader(
             self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=0,
             shuffle=False,
-            sample_transforms=partial(rising_resize, size=self.vol_size),
             batch_transforms=self.valid_transforms,
+            **self.dl_defaults,
             **self.kwargs_dataloader,
         )
