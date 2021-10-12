@@ -34,7 +34,7 @@ def test_train_model(tmpdir, prepare):
     )
     if prepare:
         dm.prepare_data()
-    net = resnet18(pretrained=False, spatial_dims=3, n_input_channels=1, num_classes=2)
+    net = resnet18(pretrained=False, spatial_dims=3, n_input_channels=1, num_classes=1)
     model = LitBrainMRI(net=net)
 
     trainer = Trainer(max_epochs=1, gpus=0)

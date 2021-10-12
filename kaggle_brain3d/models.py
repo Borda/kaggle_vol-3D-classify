@@ -21,7 +21,7 @@ def create_pretrained_medical_resnet(
     model_constructor: callable = resnet18,
     spatial_dims: int = 3,
     n_input_channels: int = 1,
-    num_classes: int = 2,
+    num_classes: int = 1,
     **kwargs_monai_resnet: Any
 ) -> Tuple[ResNet, Sequence[str]]:
     """This si specific constructor for MONAI ResNet module loading MedicalNEt weights.
@@ -78,7 +78,7 @@ class LitBrainMRI(LightningModule):
         super().__init__()
         if isinstance(net, str):
             self.name = net
-            net = EfficientNetBN(net, spatial_dims=3, in_channels=1, num_classes=2)
+            net = EfficientNetBN(net, spatial_dims=3, in_channels=1, num_classes=1)
         else:
             self.name = net.__class__.__name__
         self.net = net
@@ -88,24 +88,23 @@ class LitBrainMRI(LightningModule):
         self.learning_rate = lr
         self.optimizer = optimizer or AdamW
 
-        self.train_auroc = AUROC(num_classes=2, compute_on_step=False)
+        self.train_auroc = AUROC(num_classes=1, compute_on_step=False)
         self.train_f1_score = F1()
-        self.val_auroc = AUROC(num_classes=2, compute_on_step=False)
+        self.val_auroc = AUROC(num_classes=1, compute_on_step=False)
         self.val_f1_score = F1()
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.net(x)
+        return F.sigmoid(self.net(x)[:, 0])
 
     @staticmethod
     def compute_loss(y_hat: Tensor, y: Tensor):
-        return F.cross_entropy(y_hat, y)
+        return F.binary_cross_entropy(y_hat, y.to(y_hat.dtype))
 
     def training_step(self, batch, batch_idx):
         img, y = batch["data"], batch["label"]
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
         self.log("train/loss", loss, prog_bar=False)
-        y_hat = F.softmax(y_hat)
         self.log("train/f1", self.train_f1_score(y_hat, y), prog_bar=True)
         self.train_auroc.update(y_hat, y)
         try:  # ToDo: use balanced sampler
@@ -119,7 +118,6 @@ class LitBrainMRI(LightningModule):
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
         self.log("valid/loss", loss, prog_bar=False)
-        y_hat = F.softmax(y_hat)
         self.log("valid/f1", self.val_f1_score(y_hat, y), prog_bar=True)
         self.val_auroc.update(y_hat, y)
         try:  # ToDo: use balanced sampler
@@ -142,10 +140,9 @@ def make_submission(model: LightningModule, dataloader: DataLoader, device: str 
         imgs = batch.get("data")
         with torch.no_grad():
             preds = model(imgs.to(device))
-        probs = torch.nn.functional.softmax(preds)
         submission += [
             dict(BraTS21ID5=n.split(os.path.sep)[0], MRI_type=n.split(os.path.sep)[-1], MGMT_value=p.item())
-            for n, p in zip(batch.get("label"), probs[:, 1])
+            for n, p in zip(batch.get("label"), preds)
         ]
 
     df_submission = pd.DataFrame(submission)
