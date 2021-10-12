@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Any, Optional, Sequence, Tuple, Type, Union
 
 import pandas as pd
@@ -143,8 +144,11 @@ def make_submission(model: LightningModule, dataloader: DataLoader, device: str 
             preds = model(imgs.to(device))
         probs = torch.nn.functional.softmax(preds)
         submission += [
-            dict(BraTS21ID=n.split("/")[0], MRI_type=n.split("/")[-1], MGMT_value=p.item())
+            dict(BraTS21ID5=n.split(os.path.sep)[0], MRI_type=n.split(os.path.sep)[-1], MGMT_value=p.item())
             for n, p in zip(batch.get("label"), probs[:, 1])
         ]
 
-    return pd.DataFrame(submission)
+    df_submission = pd.DataFrame(submission)
+    df_submission["BraTS21ID"] = df_submission["BraTS21ID5"].apply(int)
+    df_submission.set_index("BraTS21ID", inplace=True)
+    return df_submission

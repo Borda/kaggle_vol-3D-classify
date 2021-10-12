@@ -1,6 +1,6 @@
 import os
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __docs__ = "Tooling for Kaggle ..."
 __author__ = "Jiri Borovec"
 __author_email__ = "jirka@pytorchlightning.ai"
