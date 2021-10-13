@@ -37,11 +37,12 @@ A simple way how to use this basic functions:
 
 ### run notebooks in Kaggle
 
-- [Brain Tumor Classif. ~ Lightning⚡EfficientNet3D](https://www.kaggle.com/jirkaborovec/brain-tumor-classif-lightning-efficientnet3d)
+- [🧠 Brain Tumor Classif. ~ Lightning⚡EfficientNet3D](https://www.kaggle.com/jirkaborovec/brain-tumor-classif-lightning-efficientnet3d)
+- [🧠 Brain Tumor Classif. ~ Lightning⚡MONAI-ResNet3D](https://www.kaggle.com/jirkaborovec/brain-tumor-classif-lightning-monai-resnet3d)
 
 ### local notebooks
 
-- [Brain tumor classification meets PT-Lightning and EfficientNet3D](notebooks/Brain-tumor-classif_PT-Lightning_EfficientNet3D.ipynb)
+- [Brain tumor classification meets PT-Lightning and MONAI EfficientNet3D](notebooks/Brain-tumor-classif_PT-Lightning_EfficientNet3D.ipynb)
 - [Brain tumor classification meets PT-Lightning and pre-trained ResNet3D](notebooks/Brain-tumor-classif_PT-Lightning_ResNet3D.ipynb)
 
 ### some results

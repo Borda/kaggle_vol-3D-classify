@@ -89,16 +89,16 @@ class LitBrainMRI(LightningModule):
         self.optimizer = optimizer or AdamW
 
         self.train_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.train_f1_score = F1()
+        self.train_f1_score = F1(multiclass=False)
         self.val_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.val_f1_score = F1()
+        self.val_f1_score = F1(multiclass=False)
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.sigmoid(self.net(x)[:, 0])
+        return torch.sigmoid(self.net(x)[:, 0])
 
     @staticmethod
     def compute_loss(y_hat: Tensor, y: Tensor):
-        return F.binary_cross_entropy(y_hat, y.to(y_hat.dtype))
+        return F.binary_cross_entropy_with_logits(y_hat, y.to(y_hat.dtype))
 
     def training_step(self, batch, batch_idx):
         img, y = batch["data"], batch["label"]
