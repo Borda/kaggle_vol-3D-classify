@@ -19,8 +19,9 @@ from kaggle_brain3d.transforms import crop_volume, RandomAffine, rising_resize, 
 from kaggle_brain3d.utils import interpolate_volume, load_volume
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
-# Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
-rising_norm_intensity = partial(rising_zero_mean, mean=0.137, std=0.243)
+# Crop Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
+# Full Dataset >> mean: 0.09317479282617569 STD: 0.2139676809310913
+rising_norm_intensity = partial(rising_zero_mean, mean=0.093, std=0.214)
 
 # define transformations
 TRAIN_TRANSFORMS = [

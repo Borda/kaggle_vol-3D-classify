@@ -12,7 +12,7 @@ from torch import nn, Tensor
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-from torchmetrics import AUROC, F1
+from torchmetrics import Accuracy, AUROC, F1
 from tqdm.auto import tqdm
 
 
@@ -54,6 +54,23 @@ def create_pretrained_medical_resnet(
     return net, inside
 
 
+# class FineTuneCB(BaseFinetuning):
+#     def __init__(self, unfreeze_at_epoch=10):
+#         self._unfreeze_at_epoch = unfreeze_at_epoch
+#
+#     def freeze_before_training(self, pl_module):
+#         pass
+#
+#     def finetune_function(self, pl_module, current_epoch, optimizer, optimizer_idx):
+#         # When `current_epoch` is 10, feature_extractor will start training.
+#         if current_epoch == self._unfreeze_at_epoch:
+#             self.unfreeze_and_add_param_group(
+#                 modules=pl_module.net,
+#                 optimizer=optimizer,
+#                 train_bn=True,
+#             )
+
+
 class FineTuneCB(Callback):
     # add callback to freeze/unfreeze trained layers
     def __init__(self, unfreeze_epoch: int) -> None:
@@ -64,6 +81,8 @@ class FineTuneCB(Callback):
             return
         for n, param in pl_module.net.named_parameters():
             param.requires_grad = True
+        optimizers, _ = pl_module.configure_optimizers()
+        trainer.optimizers = optimizers
 
 
 class LitBrainMRI(LightningModule):
@@ -89,9 +108,11 @@ class LitBrainMRI(LightningModule):
         self.optimizer = optimizer or AdamW
 
         self.train_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.train_f1_score = F1(multiclass=False)
+        self.train_acc = Accuracy(num_classes=1)
+        self.train_f1_score = F1()
         self.val_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.val_f1_score = F1(multiclass=False)
+        self.val_acc = Accuracy(num_classes=1)
+        self.val_f1_score = F1()
 
     def forward(self, x: Tensor) -> Tensor:
         return torch.sigmoid(self.net(x)[:, 0])
@@ -105,6 +126,7 @@ class LitBrainMRI(LightningModule):
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
         self.log("train/loss", loss, prog_bar=False)
+        self.log("train/acc", self.train_acc(y_hat, y), prog_bar=False)
         self.log("train/f1", self.train_f1_score(y_hat, y), prog_bar=True)
         self.train_auroc.update(y_hat, y)
         try:  # ToDo: use balanced sampler
@@ -118,6 +140,7 @@ class LitBrainMRI(LightningModule):
         y_hat = self(img)
         loss = self.compute_loss(y_hat, y)
         self.log("valid/loss", loss, prog_bar=False)
+        self.log("valid/acc", self.val_acc(y_hat, y), prog_bar=True)
         self.log("valid/f1", self.val_f1_score(y_hat, y), prog_bar=True)
         self.val_auroc.update(y_hat, y)
         try:  # ToDo: use balanced sampler
