@@ -9,3 +9,4 @@ monai>=0.7.0
 rising>=0.2.1  # loading / augmentation
 torchsummary
 https://github.com/Borda/MedicalNet/archive/refs/heads/master.zip
+opencv-python-headless

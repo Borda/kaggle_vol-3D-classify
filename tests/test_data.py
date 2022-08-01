@@ -7,7 +7,7 @@ import pandas as pd
 from pydicom.data import get_testdata_file
 
 from kaggle_volclassif.data import BrainScansDataset, BrainScansDM
-from kaggle_volclassif.utils import load_volume
+from kaggle_volclassif.utils import load_dicom, load_volume_brain, norm_image
 
 
 def _generate_sample_volume(path_folder: str, nb: int = 10):
@@ -40,9 +40,18 @@ def _generate_synthetic_dataset(
     pd.DataFrame(labels).set_index("BraTS21ID").to_csv(path_csv)
 
 
+def test_load_image(tmpdir):
+    path_img = os.path.join(tmpdir, "img-sample.dcm")
+    shutil.copy(get_testdata_file("CT_small.dcm"), path_img)
+    img = load_dicom(path_img)
+    assert tuple(img.shape) == (128, 128)
+    img = norm_image(img)
+    assert tuple(img.shape) == (128, 128)
+
+
 def test_load_volume(tmpdir):
     _generate_sample_volume(tmpdir)
-    vol = load_volume(tmpdir)
+    vol = load_volume_brain(tmpdir)
     assert tuple(vol.shape) == (128, 128, 10)
 
 

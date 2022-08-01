@@ -16,7 +16,7 @@ from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
 from kaggle_volclassif.transforms import crop_volume, RandomAffine, rising_resize, rising_zero_mean
-from kaggle_volclassif.utils import interpolate_volume, load_volume
+from kaggle_volclassif.utils import interpolate_volume, load_volume_brain
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 # Crop Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
@@ -109,7 +109,7 @@ class BrainScansDataset(Dataset):
                 print(f"failed loading: {vol_path}")
         img_path = os.path.join(image_dir, rltv_path)
         assert os.path.isdir(img_path)
-        img = load_volume(img_path)
+        img = load_volume_brain(img_path)
         img = interpolate_volume(img, vol_size=vol_size)
         if crop_thr is not None:
             img = crop_volume(img, thr=crop_thr)
