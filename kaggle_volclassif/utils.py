@@ -76,6 +76,22 @@ def load_volume_brain(path_volume: str, percentile: Optional[float] = 0.01) -> T
     return volume.T
 
 
+def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)) -> np.ndarray:
+    ls_imgs = glob.glob(os.path.join(dir_path, "*.dcm"))
+    ls_imgs = sorted(ls_imgs, key=lambda p: int(os.path.splitext(os.path.basename(p))[0]))
+
+    imgs = []
+    for p_img in ls_imgs:
+        dicom = pydicom.dcmread(p_img)
+        img = apply_voi_lut(dicom.pixel_array, dicom)
+        img = cv2.resize(img, size[:2], interpolation=cv2.INTER_LINEAR)
+        imgs.append(img.tolist())
+    vol = np.array(imgs)
+
+    vol = interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
+    return vol
+
+
 def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:
     """Interpolate volume in last (Z) dimension
 
