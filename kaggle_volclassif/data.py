@@ -15,8 +15,8 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
-from kaggle_brain3d.transforms import crop_volume, RandomAffine, rising_resize, rising_zero_mean
-from kaggle_brain3d.utils import interpolate_volume, load_volume
+from kaggle_volclassif.transforms import crop_volume, RandomAffine, rising_resize, rising_zero_mean
+from kaggle_volclassif.utils import interpolate_volume, load_volume
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 # Crop Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455

@@ -10,7 +10,7 @@ from setuptools import find_packages, setup
 
 _PATH_ROOT = os.path.dirname(__file__)
 
-import kaggle_brain3d  # noqa: E402
+import kaggle_volclassif  # noqa: E402
 
 
 def _load_requirements(path_dir=_PATH_ROOT, comment_char='#'):
@@ -22,7 +22,7 @@ def _load_requirements(path_dir=_PATH_ROOT, comment_char='#'):
 
 
 def _load_long_description():
-    url = os.path.join(kaggle_brain3d.__homepage__, 'raw', kaggle_brain3d.__version__, 'docs')
+    url = os.path.join(kaggle_volclassif.__homepage__, 'raw', kaggle_volclassif.__version__, 'docs')
     text = open('README.md', encoding='utf-8').read()
     # replace relative repository path to absolute link to the release
     text = text.replace('](docs', f']({url}')
@@ -38,12 +38,12 @@ def _load_long_description():
 # engineer specific practices
 setup(
     name='kaggle-brain3D',
-    version=kaggle_brain3d.__version__,
-    description=kaggle_brain3d.__docs__,
-    author=kaggle_brain3d.__author__,
-    author_email=kaggle_brain3d.__author_email__,
-    url=kaggle_brain3d.__homepage__,
-    license=kaggle_brain3d.__license__,
+    version=kaggle_volclassif.__version__,
+    description=kaggle_volclassif.__docs__,
+    author=kaggle_volclassif.__author__,
+    author_email=kaggle_volclassif.__author_email__,
+    url=kaggle_volclassif.__homepage__,
+    license=kaggle_volclassif.__license__,
     packages=find_packages(exclude=['tests', 'docs']),
     long_description=_load_long_description(),
     long_description_content_type='text/markdown',
@@ -54,7 +54,7 @@ setup(
     setup_requires=[],
     install_requires=_load_requirements(_PATH_ROOT),
     project_urls={
-        "Source Code": kaggle_brain3d.__homepage__,
+        "Source Code": kaggle_volclassif.__homepage__,
     },
     classifiers=[
         'Environment :: Console',
