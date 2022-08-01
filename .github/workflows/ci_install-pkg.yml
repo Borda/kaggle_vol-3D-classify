@@ -58,6 +58,6 @@ jobs:
           virtualenv vEnv
           source vEnv/bin/activate
           pip install dist/*
-          cd .. & python -c "import kaggle_brain3d ; print(kaggle_brain3d.__version__)"
+          cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
           deactivate
           rm -rf vEnv
