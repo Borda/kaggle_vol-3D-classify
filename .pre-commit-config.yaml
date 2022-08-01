@@ -9,7 +9,7 @@ ci:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.3.0
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
@@ -23,10 +23,10 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.0
+    rev: v2.37.3
     hooks:
       - id: pyupgrade
-        args: [--py36-plus]
+        args: [--py37-plus]
         name: Upgrade code
 
   - repo: https://github.com/PyCQA/isort
@@ -42,7 +42,7 @@ repos:
         name: formatting
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.11
+    rev: 0.7.14
     hooks:
       - id: mdformat
         additional_dependencies:
@@ -56,7 +56,7 @@ repos:
       - id: yesqa
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.1
     hooks:
       - id: flake8
         name: PEP8

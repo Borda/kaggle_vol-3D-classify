@@ -1,9 +1,9 @@
 # Kaggle: [Brain Tumor Radiogenomic Classification](https://www.kaggle.com/c/rsna-miccai-brain-tumor-radiogenomic-classification)
 
-[![CI complete testing](https://github.com/Borda/kaggle_brain-tumor-3D/actions/workflows/ci_testing.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_brain-tumor-3D/actions/workflows/ci_testing.yml)
-[![Code formatting](https://github.com/Borda/kaggle_brain-tumor-3D/actions/workflows/code-format.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_brain-tumor-3D/actions/workflows/code-format.yml)
-[![codecov](https://codecov.io/gh/Borda/kaggle_brain-tumor-3D/branch/main/graph/badge.svg?token=bxqTQDXHvU)](https://codecov.io/gh/Borda/kaggle_brain-tumor-3D)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Borda/kaggle_brain-tumor-3D/main.svg)](https://results.pre-commit.ci/latest/github/Borda/kaggle_brain-tumor-3D/main)
+[![CI complete testing](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml)
+[![Code formatting](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/code-format.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/code-format.yml)
+[![codecov](https://codecov.io/gh/Borda/kaggle_vol-3D-classify/branch/main/graph/badge.svg?token=bxqTQDXHvU)](https://codecov.io/gh/Borda/kaggle_vol-3D-classify)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Borda/kaggle_vol-3D-classify/main.svg)](https://results.pre-commit.ci/latest/github/Borda/kaggle_vol-3D-classify/main)
 
 The goal of this challenge is to Predict the status of a genetic biomarker important for brain cancer treatment.
 
@@ -32,7 +32,7 @@ The labels/targets are `MGMT_value`:
 A simple way how to use this basic functions:
 
 ```bash
-! pip install https://github.com/Borda/kaggle_brain-tumor-3D/archive/refs/heads/main.zip
+! pip install https://github.com/Borda/kaggle_vol-3D-classify/archive/refs/heads/main.zip
 ```
 
 ### run notebooks in Kaggle

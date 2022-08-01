@@ -6,8 +6,8 @@ from typing import Sequence, Union
 import pandas as pd
 from pydicom.data import get_testdata_file
 
-from kaggle_brain3d.data import BrainScansDataset, BrainScansDM
-from kaggle_brain3d.utils import load_volume
+from kaggle_volclassif.data import BrainScansDataset, BrainScansDM
+from kaggle_volclassif.utils import load_volume
 
 
 def _generate_sample_volume(path_folder: str, nb: int = 10):
