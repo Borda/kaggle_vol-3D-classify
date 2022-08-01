@@ -37,7 +37,7 @@ def _load_long_description():
 # the goal of the project is simplicity for researchers, don't want to add too much
 # engineer specific practices
 setup(
-    name='kaggle-brain3D',
+    name='kaggle-vol3d-classify',
     version=kaggle_volclassif.__version__,
     description=kaggle_volclassif.__docs__,
     author=kaggle_volclassif.__author__,
