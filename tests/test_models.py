@@ -4,7 +4,7 @@ import pytest
 from monai.networks.nets import EfficientNetBN, resnet18
 from pytorch_lightning import seed_everything, Trainer
 
-from kaggle_volclassif.data import BrainScansDM
+from kaggle_volclassif.data.brain import BrainScansDM
 from kaggle_volclassif.models import LitBrainMRI, make_submission
 from tests.test_data import _generate_synthetic_dataset
 

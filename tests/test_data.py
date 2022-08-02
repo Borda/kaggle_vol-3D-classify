@@ -6,7 +6,7 @@ from typing import Sequence, Union
 import pandas as pd
 from pydicom.data import get_testdata_file
 
-from kaggle_volclassif.data import BrainScansDataset, BrainScansDM
+from kaggle_volclassif.data.brain import BrainScansDataset, BrainScansDM
 from kaggle_volclassif.utils import load_volume
 
 
