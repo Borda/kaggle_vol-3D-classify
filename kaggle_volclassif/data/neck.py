@@ -2,13 +2,13 @@ import glob
 import logging
 import os
 from functools import partial
-from typing import Union, Optional, Tuple, Dict, Any
+from typing import Any, Dict, Optional, Tuple, Union
 
 import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import Dataset
 from rising.loading import DataLoader
+from torch.utils.data import Dataset
 
 from kaggle_volclassif.transforms import rising_resize
 
@@ -46,7 +46,7 @@ class SpineScansDataset(Dataset):
         self.table = self.table[:frac] if mode == 'train' else self.table[frac:]
 
         # populate images/labels
-        self.label_names = sorted([c for c in self.table.columns if c.startswith("C")])
+        self.label_names = sorted(c for c in self.table.columns if c.startswith("C"))
         self.labels = self.table[self.label_names].values if self.label_names else [None] * len(self.table)
         self.volumes = [os.path.join(volume_dir, f"{row['StudyInstanceUID']}.pt") for _, row in self.table.iterrows()]
         assert len(self.volumes) == len(self.labels)
@@ -104,10 +104,11 @@ class SpineScansDM(LightningDataModule):
         self.kwargs_dataloader = kwargs_dataloader
 
         # need to be filled in setup()
+        self.test_table = []
         self.train_dataset = None
         self.valid_dataset = None
-        self.test_table = []
         self.test_dataset = None
+        self._label_names = {}
         self.train_transforms = train_transforms
         self.valid_transforms = valid_transforms
 
@@ -118,6 +119,10 @@ class SpineScansDM(LightningDataModule):
             num_workers=self.num_workers,
             sample_transforms=partial(rising_resize, size=self.vol_size),
         )
+
+    @property
+    def num_labels(self) -> int:
+        return len(self._label_name)
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
@@ -131,6 +136,7 @@ class SpineScansDM(LightningDataModule):
         logging.info(f"training dataset: {len(self.train_dataset)}")
         self.valid_dataset = SpineScansDataset(**ds_training, mode='valid')
         logging.info(f"validation dataset: {len(self.valid_dataset)}")
+        self._label_name = sorted(set(self.train_dataset.label_names + self.valid_dataset.label_names))
 
         if not os.path.isdir(self.test_dir):
             logging.warning(f"Missing test folder: {self.test_dir}")
