@@ -46,7 +46,7 @@ class SpineScansDataset(Dataset):
         self.table = self.table[:frac] if mode == 'train' else self.table[frac:]
 
         # populate images/labels
-        self.label_names = sorted([c for c in self.table.columns if c.startswith("C")])
+        self.label_names = sorted(c for c in self.table.columns if c.startswith("C"))
         self.labels = self.table[self.label_names].values if self.label_names else [None] * len(self.table)
         self.volumes = [os.path.join(volume_dir, f"{row['StudyInstanceUID']}.pt") for _, row in self.table.iterrows()]
         assert len(self.volumes) == len(self.labels)
