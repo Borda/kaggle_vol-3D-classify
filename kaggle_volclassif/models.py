@@ -9,10 +9,10 @@ import torch.nn.functional as F
 from monai.networks.nets import EfficientNetBN, ResNet, resnet18
 from pytorch_lightning import Callback, LightningModule
 from torch import nn, Tensor
-from torch.optim import AdamW, Optimizer
+from torch.optim import Adamax, AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-from torchmetrics import Accuracy, AUROC, F1
+from torchmetrics import Accuracy, AUROC, F1Score
 from tqdm.auto import tqdm
 
 
@@ -54,23 +54,6 @@ def create_pretrained_medical_resnet(
     return net, inside
 
 
-# class FineTuneCB(BaseFinetuning):
-#     def __init__(self, unfreeze_at_epoch=10):
-#         self._unfreeze_at_epoch = unfreeze_at_epoch
-#
-#     def freeze_before_training(self, pl_module):
-#         pass
-#
-#     def finetune_function(self, pl_module, current_epoch, optimizer, optimizer_idx):
-#         # When `current_epoch` is 10, feature_extractor will start training.
-#         if current_epoch == self._unfreeze_at_epoch:
-#             self.unfreeze_and_add_param_group(
-#                 modules=pl_module.net,
-#                 optimizer=optimizer,
-#                 train_bn=True,
-#             )
-
-
 class FineTuneCB(Callback):
     # add callback to freeze/unfreeze trained layers
     def __init__(self, unfreeze_epoch: int) -> None:
@@ -109,10 +92,10 @@ class LitBrainMRI(LightningModule):
 
         self.train_auroc = AUROC(num_classes=1, compute_on_step=False)
         self.train_acc = Accuracy(num_classes=1)
-        self.train_f1_score = F1()
+        self.train_f1_score = F1Score()
         self.val_auroc = AUROC(num_classes=1, compute_on_step=False)
         self.val_acc = Accuracy(num_classes=1)
-        self.val_f1_score = F1()
+        self.val_f1_score = F1Score()
 
     def forward(self, x: Tensor) -> Tensor:
         return torch.sigmoid(self.net(x)[:, 0])
@@ -154,7 +137,7 @@ class LitBrainMRI(LightningModule):
         return [optimizer], [scheduler]
 
 
-def make_submission(model: LightningModule, dataloader: DataLoader, device: str = "cpu") -> pd.DataFrame:
+def make_submission_brain(model: LightningModule, dataloader: DataLoader, device: str = "cpu") -> pd.DataFrame:
     model.eval()
     model.to(device)
     submission = []
@@ -172,3 +155,57 @@ def make_submission(model: LightningModule, dataloader: DataLoader, device: str 
     df_submission["BraTS21ID"] = df_submission["BraTS21ID5"].apply(int)
     df_submission.set_index("BraTS21ID", inplace=True)
     return df_submission
+
+
+class LitNeckCT(LightningModule):
+
+    def __init__(
+        self,
+        net: Union[nn.Module, str] = "efficientnet-b0",
+        num_labels: int = 7,
+        pretrained_params: Optional[Sequence[str]] = None,
+        lr: float = 1e-3,
+        optimizer: Optional[Type[Optimizer]] = None,
+    ):
+        super().__init__()
+        if isinstance(net, str):
+            self.name = net
+            net = EfficientNetBN(net, spatial_dims=3, in_channels=1, num_classes=num_labels)
+        else:
+            self.name = net.__class__.__name__
+        self.net = net
+        self.pretrained_params = set(pretrained_params) if pretrained_params else set()
+        for n, param in self.net.named_parameters():
+            param.requires_grad = bool(n not in self.pretrained_params)
+        self.learning_rate = lr
+        self.optimizer = optimizer or Adamax
+
+        self.train_f1_score = F1Score(num_classes=num_labels)
+        self.val_f1_score = F1Score(num_classes=num_labels)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return torch.sigmoid(self.net(x))
+
+    @staticmethod
+    def compute_loss(y_hat: Tensor, y: Tensor):
+        return F.binary_cross_entropy_with_logits(y_hat, y.to(y_hat.dtype))
+
+    def training_step(self, batch, batch_idx):
+        img, y = batch["data"], batch["label"]
+        y_hat = self(img)
+        loss = self.compute_loss(y_hat, y)
+        self.log("train/loss", loss, prog_bar=False)
+        self.log("train/f1", self.train_f1_score(y_hat, y), prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        img, y = batch["data"], batch["label"]
+        y_hat = self(img)
+        loss = self.compute_loss(y_hat, y)
+        self.log("valid/loss", loss, prog_bar=False)
+        self.log("valid/f1", self.val_f1_score(y_hat, y), prog_bar=True)
+
+    def configure_optimizers(self):
+        optimizer = self.optimizer(self.net.parameters(), lr=self.learning_rate)
+        scheduler = CosineAnnealingLR(optimizer, self.trainer.max_epochs, 0)
+        return [optimizer], [scheduler]
