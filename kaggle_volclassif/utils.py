@@ -1,8 +1,10 @@
 import glob
+import logging
 import os
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
+import cv2
 import numpy as np
 import pydicom
 import torch
@@ -18,18 +20,44 @@ def parse_name_index(dcm_path) -> int:
     return int(res[0])
 
 
-def load_dicom(path_file: str) -> Optional[np.ndarray]:
+def load_dicom(path_file: str, ) -> Optional[np.ndarray]:
     dicom = pydicom.dcmread(path_file)
     # TODO: adjust spacing in particular dimension according DICOM meta
     try:
         img = apply_voi_lut(dicom.pixel_array, dicom).astype(np.float32)
     except RuntimeError as err:
-        print(err)
+        logging.error(err)
         return None
     return img
 
 
-def load_volume(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
+def norm_image(
+    img: np.ndarray,
+    norm_range: Union[int, float] = np.uint8(255),
+    scale: Optional[float] = None,
+    denoising_h: Optional[int] = 3,
+    adapt_equalize: bool = False
+) -> np.ndarray:
+    if norm_range:
+        img = (img - img.min()) / float(img.max() - img.min())
+        img = np.clip(img * norm_range, 0, norm_range).astype(type(norm_range))
+
+    if scale is not None:
+        dim = int(img.shape[1] * scale), int(img.shape[0] * scale)
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_LINEAR)
+
+    # denoising of image saving it into dst image
+    if denoising_h is not None:
+        img = cv2.fastNlMeansDenoising(img, h=denoising_h)
+
+    # create a CLAHE object (Arguments are optional).
+    if adapt_equalize:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        img = clahe.apply(img)
+    return img
+
+
+def load_volume_brain(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
     path_slices = glob.glob(os.path.join(path_volume, '*.dcm'))
     path_slices = sorted(path_slices, key=parse_name_index)
     vol = []
@@ -46,6 +74,22 @@ def load_volume(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
         # normalize
         volume = (volume - p_low) / (p_high - p_low)
     return volume.T
+
+
+def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)) -> np.ndarray:
+    ls_imgs = glob.glob(os.path.join(dir_path, "*.dcm"))
+    ls_imgs = sorted(ls_imgs, key=lambda p: int(os.path.splitext(os.path.basename(p))[0]))
+
+    imgs = []
+    for p_img in ls_imgs:
+        dicom = pydicom.dcmread(p_img)
+        img = apply_voi_lut(dicom.pixel_array, dicom)
+        img = cv2.resize(img, size[:2], interpolation=cv2.INTER_LINEAR)
+        imgs.append(img.tolist())
+    vol = np.array(imgs)
+
+    vol = interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
+    return vol
 
 
 def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:

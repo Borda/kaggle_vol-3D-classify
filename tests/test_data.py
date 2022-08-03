@@ -1,19 +1,11 @@
 import os
 import random
-import shutil
 from typing import Sequence, Union
 
 import pandas as pd
-from pydicom.data import get_testdata_file
 
-from kaggle_volclassif.data.brain import BrainScansDataset, BrainScansDM
-from kaggle_volclassif.utils import load_volume
-
-
-def _generate_sample_volume(path_folder: str, nb: int = 10):
-    for i in range(nb):
-        path_img = os.path.join(path_folder, "img-%d.dcm" % i)
-        shutil.copy(get_testdata_file("CT_small.dcm"), path_img)
+from kaggle_volclassif.data import BrainScansDataset, BrainScansDM
+from tests.test_utils import _generate_sample_volume_brain
 
 
 def _generate_synthetic_dataset(
@@ -33,17 +25,11 @@ def _generate_synthetic_dataset(
         for n in scans:
             path_scan = os.path.join(path_user, n)
             os.makedirs(path_scan, exist_ok=True)
-            _generate_sample_volume(path_scan, dim_z)
+            _generate_sample_volume_brain(path_scan, dim_z)
         labels.append({"BraTS21ID": user, "MGMT_value": random.randint(0, 1)})
 
     path_csv = os.path.join(path_folder, 'train_labels.csv')
     pd.DataFrame(labels).set_index("BraTS21ID").to_csv(path_csv)
-
-
-def test_load_volume(tmpdir):
-    _generate_sample_volume(tmpdir)
-    vol = load_volume(tmpdir)
-    assert tuple(vol.shape) == (128, 128, 10)
 
 
 def test_dataset(tmpdir):
