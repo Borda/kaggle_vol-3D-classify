@@ -46,23 +46,25 @@ class SpineScansDataset(Dataset):
         self.table = self.table[:frac] if mode == 'train' else self.table[frac:]
 
         # populate images/labels
-        self.label_names = sorted(c for c in self.table.columns if c.startswith("C"))
+        self.label_names = sorted([c for c in self.table.columns if c.startswith("C")])
         self.labels = self.table[self.label_names].values if self.label_names else [None] * len(self.table)
         self.volumes = [os.path.join(volume_dir, f"{row['StudyInstanceUID']}.pt") for _, row in self.table.iterrows()]
         assert len(self.volumes) == len(self.labels)
 
     def __getitem__(self, idx: int) -> dict:
         label = self.labels[idx]
-        vol = self.volumes[idx]
-        if isinstance(vol, str):
+        vol_ = self.volumes[idx]
+        if isinstance(vol_, str):
             try:
-                vol = torch.load(vol).to(torch.float32)
+                vol = torch.load(vol_).to(torch.float32)
             except (EOFError, RuntimeError):
-                print(f"failed loading: {vol}")
+                print(f"failed loading: {vol_}")
+        else:
+            vol = vol_
         if self.in_memory:
             self.volumes[idx] = vol
         # in case of predictions, return image name as label
-        label = label if label is not None else vol
+        label = label if label is not None else vol_
         return {"data": vol.unsqueeze(0), "label": label}
 
     def __len__(self) -> int:
@@ -142,7 +144,7 @@ class SpineScansDM(LightningDataModule):
             logging.warning(f"Missing test folder: {self.test_dir}")
             return
         ls_cases = [os.path.basename(p) for p in glob.glob(os.path.join(self.test_dir, '*'))]
-        self.test_table = [dict(StudyInstanceUID=n) for n in ls_cases]
+        self.test_table = [dict(StudyInstanceUID=os.path.splitext(n)[0]) for n in ls_cases]
         self.test_dataset = SpineScansDataset(
             self.test_dir,
             df_table=pd.DataFrame(self.test_table),
