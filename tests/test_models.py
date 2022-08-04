@@ -4,8 +4,8 @@ import pytest
 from monai.networks.nets import EfficientNetBN, resnet18
 from pytorch_lightning import seed_everything, Trainer
 
-from kaggle_volclassif.data import BrainScansDM
-from kaggle_volclassif.models import LitBrainMRI, make_submission
+from kaggle_volclassif.data.brain import BrainScansDM
+from kaggle_volclassif.models import LitBrainMRI, make_submission_brain
 from tests.test_data import _generate_synthetic_dataset
 
 _PATH_HERE = os.path.dirname(__file__)
@@ -40,5 +40,5 @@ def test_train_model(tmpdir, prepare):
     trainer = Trainer(max_epochs=2, gpus=0)
     trainer.fit(model, datamodule=dm)
 
-    df_sub = make_submission(model, dm.test_dataloader())
+    df_sub = make_submission_brain(model, dm.test_dataloader())
     assert len(df_sub) == 5
