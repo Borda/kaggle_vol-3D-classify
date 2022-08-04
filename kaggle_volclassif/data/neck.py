@@ -110,7 +110,7 @@ class SpineScansDM(LightningDataModule):
         self.train_dataset = None
         self.valid_dataset = None
         self.test_dataset = None
-        self._label_names = {}
+        self.label_names = {}
         self.train_transforms = train_transforms
         self.valid_transforms = valid_transforms
 
@@ -124,7 +124,7 @@ class SpineScansDM(LightningDataModule):
 
     @property
     def num_labels(self) -> int:
-        return len(self._label_name)
+        return len(self.label_names)
 
     def setup(self, *_, **__) -> None:
         """Prepare datasets"""
@@ -138,7 +138,7 @@ class SpineScansDM(LightningDataModule):
         logging.info(f"training dataset: {len(self.train_dataset)}")
         self.valid_dataset = SpineScansDataset(**ds_training, mode='valid')
         logging.info(f"validation dataset: {len(self.valid_dataset)}")
-        self._label_name = sorted(set(self.train_dataset.label_names + self.valid_dataset.label_names))
+        self.label_names = sorted(set(self.train_dataset.label_names + self.valid_dataset.label_names))
 
         if not os.path.isdir(self.test_dir):
             logging.warning(f"Missing test folder: {self.test_dir}")
