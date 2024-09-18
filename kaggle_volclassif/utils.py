@@ -20,7 +20,9 @@ def parse_name_index(dcm_path) -> int:
     return int(res[0])
 
 
-def load_dicom(path_file: str, ) -> Optional[np.ndarray]:
+def load_dicom(
+    path_file: str,
+) -> Optional[np.ndarray]:
     dicom = pydicom.dcmread(path_file)
     # TODO: adjust spacing in particular dimension according DICOM meta
     try:
@@ -36,7 +38,7 @@ def norm_image(
     norm_range: Union[int, float] = np.uint8(255),
     scale: Optional[float] = None,
     denoising_h: Optional[int] = 3,
-    adapt_equalize: bool = False
+    adapt_equalize: bool = False,
 ) -> np.ndarray:
     if norm_range:
         img = (img - img.min()) / float(img.max() - img.min())
@@ -58,7 +60,7 @@ def norm_image(
 
 
 def load_volume_brain(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
-    path_slices = glob.glob(os.path.join(path_volume, '*.dcm'))
+    path_slices = glob.glob(os.path.join(path_volume, "*.dcm"))
     path_slices = sorted(path_slices, key=parse_name_index)
     vol = []
     for p_slice in path_slices:
@@ -88,8 +90,7 @@ def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)
         imgs.append(img.tolist())
     vol = np.array(imgs)
 
-    vol = interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
-    return vol
+    return interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
 
 
 def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:
@@ -113,12 +114,12 @@ def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] 
     return F.interpolate(volume.unsqueeze(0).unsqueeze(0), size=vol_size, mode="trilinear", align_corners=False)[0, 0]
 
 
-def show_volume_slice(axarr_, vol_slice, ax_name: str, v_min_max: tuple = (0., 1.)):
+def show_volume_slice(axarr_, vol_slice, ax_name: str, v_min_max: tuple = (0.0, 1.0)):
     axarr_[0].set_title(f"axis: {ax_name}")
     axarr_[0].imshow(vol_slice, cmap="gray", vmin=v_min_max[0], vmax=v_min_max[1])
     axarr_[1].plot(torch.sum(vol_slice, 1), list(range(vol_slice.shape[0]))[::-1])
     axarr_[1].plot(list(range(vol_slice.shape[1])), torch.sum(vol_slice, 0))
-    axarr_[1].set_aspect('equal')
+    axarr_[1].set_aspect("equal")
     axarr_[1].grid()
 
 
@@ -138,7 +139,7 @@ def show_volume(
     y: Optional[int] = None,
     z: Optional[int] = None,
     fig_size: Tuple[int, int] = (14, 9),
-    v_min_max: tuple = (0., 1.),
+    v_min_max: tuple = (0.0, 1.0),
 ):
     """Show volume in the three axis/cuts.
 

@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import suppress
 from typing import Any, Optional, Sequence, Tuple, Type, Union
 
 import pandas as pd
@@ -8,11 +9,11 @@ import torch
 import torch.nn.functional as F
 from monai.networks.nets import EfficientNetBN, ResNet, resnet18
 from pytorch_lightning import Callback, LightningModule
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-from torchmetrics import Accuracy, AUROC, F1
+from torchmetrics import AUROC, F1, Accuracy
 from tqdm.auto import tqdm
 
 
@@ -22,7 +23,7 @@ def create_pretrained_medical_resnet(
     spatial_dims: int = 3,
     n_input_channels: int = 1,
     num_classes: int = 1,
-    **kwargs_monai_resnet: Any
+    **kwargs_monai_resnet: Any,
 ) -> Tuple[ResNet, Sequence[str]]:
     """This si specific constructor for MONAI ResNet module loading MedicalNEt weights.
 
@@ -35,22 +36,22 @@ def create_pretrained_medical_resnet(
         spatial_dims=spatial_dims,
         n_input_channels=n_input_channels,
         num_classes=num_classes,
-        **kwargs_monai_resnet
+        **kwargs_monai_resnet,
     )
     net_dict = net.state_dict()
     pretrain = torch.load(pretrained_path)
-    pretrain['state_dict'] = {k.replace('module.', ''): v for k, v in pretrain['state_dict'].items()}
-    missing = tuple({k for k in net_dict.keys() if k not in pretrain['state_dict']})
+    pretrain["state_dict"] = {k.replace("module.", ""): v for k, v in pretrain["state_dict"].items()}
+    missing = tuple({k for k in net_dict if k not in pretrain["state_dict"]})
     logging.debug(f"missing in pretrained: {len(missing)}")
-    inside = tuple({k for k in pretrain['state_dict'] if k in net_dict.keys()})
+    inside = tuple({k for k in pretrain["state_dict"] if k in net_dict})
     logging.debug(f"inside pretrained: {len(inside)}")
-    unused = tuple({k for k in pretrain['state_dict'] if k not in net_dict.keys()})
+    unused = tuple({k for k in pretrain["state_dict"] if k not in net_dict})
     logging.debug(f"unused pretrained: {len(unused)}")
     assert len(inside) > len(missing)
     assert len(inside) > len(unused)
 
-    pretrain['state_dict'] = {k: v for k, v in pretrain['state_dict'].items() if k in net_dict.keys()}
-    net.load_state_dict(pretrain['state_dict'], strict=False)
+    pretrain["state_dict"] = {k: v for k, v in pretrain["state_dict"].items() if k in net_dict}
+    net.load_state_dict(pretrain["state_dict"], strict=False)
     return net, inside
 
 
@@ -86,7 +87,6 @@ class FineTuneCB(Callback):
 
 
 class LitBrainMRI(LightningModule):
-
     def __init__(
         self,
         net: Union[nn.Module, str] = "efficientnet-b0",
@@ -129,10 +129,8 @@ class LitBrainMRI(LightningModule):
         self.log("train/acc", self.train_acc(y_hat, y), prog_bar=False)
         self.log("train/f1", self.train_f1_score(y_hat, y), prog_bar=True)
         self.train_auroc.update(y_hat, y)
-        try:  # ToDo: use balanced sampler
-            self.log('train/auroc', self.train_auroc, on_step=False, on_epoch=True)
-        except ValueError:
-            pass
+        with suppress(ValueError):  # ToDo: use balanced sampler
+            self.log("train/auroc", self.train_auroc, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -143,10 +141,8 @@ class LitBrainMRI(LightningModule):
         self.log("valid/acc", self.val_acc(y_hat, y), prog_bar=True)
         self.log("valid/f1", self.val_f1_score(y_hat, y), prog_bar=True)
         self.val_auroc.update(y_hat, y)
-        try:  # ToDo: use balanced sampler
-            self.log('valid/auroc', self.val_auroc, on_step=False, on_epoch=True)
-        except ValueError:
-            pass
+        with suppress(ValueError):  # ToDo: use balanced sampler
+            self.log("valid/auroc", self.val_auroc, on_step=False, on_epoch=True)
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.net.parameters(), lr=self.learning_rate)

@@ -31,8 +31,11 @@ def resize_volume(volume: Tensor, size: int = 128) -> Tensor:
     offset = _tuple_int((shape_new - shape_scale) / 2)
     volume = torch.zeros(*_tuple_int(shape_new), dtype=volume.dtype)
     shape_scale = _tuple_int(shape_scale)
-    volume[offset[0]:offset[0] + shape_scale[0], offset[1]:offset[1] + shape_scale[1],
-           offset[2]:offset[2] + shape_scale[2]] = vol_
+    volume[
+        offset[0] : offset[0] + shape_scale[0],
+        offset[1] : offset[1] + shape_scale[1],
+        offset[2] : offset[2] + shape_scale[2],
+    ] = vol_
     return volume
 
 
@@ -58,9 +61,11 @@ def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
     dims_x = torch.sum(torch.sum(volume, 1), -1) / np.prod(volume.shape)
     dims_y = torch.sum(torch.sum(volume, 0), -1) / np.prod(volume.shape)
     dims_z = torch.sum(torch.sum(volume, 0), 0) / np.prod(volume.shape)
-    return volume[find_dim_min(dims_x, thr):find_dim_max(dims_x, thr),
-                  find_dim_min(dims_y, thr):find_dim_max(dims_y, thr),
-                  find_dim_min(dims_z, thr):find_dim_max(dims_z, thr)]
+    return volume[
+        find_dim_min(dims_x, thr) : find_dim_max(dims_x, thr),
+        find_dim_min(dims_y, thr) : find_dim_max(dims_y, thr),
+        find_dim_min(dims_z, thr) : find_dim_max(dims_z, thr),
+    ]
 
 
 def rising_resize(size: Union[str, Tuple] = 64, **batch) -> Dict[str, Any]:
@@ -104,15 +109,15 @@ class RandomAffine(rtr.BaseAffine):
         translation_range: tuple,
         degree: bool = True,
         image_transform: bool = True,
-        keys: Sequence = ('data', ),
+        keys: Sequence = ("data",),
         grad: bool = False,
         output_size: Optional[tuple] = None,
         adjust_size: bool = False,
-        interpolation_mode: str = 'nearest',
-        padding_mode: str = 'zeros',
+        interpolation_mode: str = "nearest",
+        padding_mode: str = "zeros",
         align_corners: bool = False,
         reverse_order: bool = False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             scale=None,
@@ -128,7 +133,7 @@ class RandomAffine(rtr.BaseAffine):
             padding_mode=padding_mode,
             align_corners=align_corners,
             reverse_order=reverse_order,
-            **kwargs
+            **kwargs,
         )
 
         self.scale_range = scale_range
@@ -139,15 +144,15 @@ class RandomAffine(rtr.BaseAffine):
         ndim = data[self.keys[0]].ndim - 2
 
         if self.scale_range is not None:
-            self.scale = [random.uniform(*self.scale_range) for _ in range(ndim)]
+            self.scale = [random.uniform(*self.scale_range) for _ in range(ndim)]  # noqa: S311
 
         if self.translation_range is not None:
-            self.translation = [random.uniform(*self.translation_range) for _ in range(ndim)]
+            self.translation = [random.uniform(*self.translation_range) for _ in range(ndim)]  # noqa: S311
 
         if self.rotation_range is not None:
             if ndim == 3:
-                self.rotation = [random.uniform(*self.rotation_range) for _ in range(ndim)]
+                self.rotation = [random.uniform(*self.rotation_range) for _ in range(ndim)]  # noqa: S311
             elif ndim == 1:
-                self.rotation = random.uniform(*self.rotation_range)
+                self.rotation = random.uniform(*self.rotation_range)  # noqa: S311
 
         return super().assemble_matrix(**data)

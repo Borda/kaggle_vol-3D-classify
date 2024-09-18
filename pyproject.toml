@@ -1,0 +1,72 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = [
+  ".git",
+  ".github",
+  "dist",
+  "build",
+  "docs",
+]
+addopts = [
+  "--strict-markers",
+  "--doctest-modules",
+  "--color=yes",
+  "--disable-pytest-warnings",
+]
+filterwarnings = [
+  "error::FutureWarning",
+]
+xfail_strict = true
+junit_duration_report = "call"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "pass",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+# Unlike Flake8, default to a complexity level of 10.
+lint.mccabe.max-complexity = 10
+# Use Google-style docstrings.
+lint.pydocstyle.convention = "google"
+format.preview = true
+lint.select = [
+  "E",
+  "F",  # see: https://pypi.org/project/pyflakes
+  "I",  #see: https://pypi.org/project/isort
+  "S",  # see: https://pypi.org/project/flake8-bandit
+  "UP", # see: https://docs.astral.sh/ruff/rules/#pyupgrade-up
+#  "D",  # see: https://pypi.org/project/pydocstyle
+  "W",  # see: https://pypi.org/project/pycodestyle
+]
+lint.extend-select = [
+#  "C4",   # see: https://pypi.org/project/flake8-comprehensions
+  "PLE",  # see: https://pypi.org/project/pylint/
+  "PT",   # see: https://pypi.org/project/flake8-pytest-style
+  "RET",  # see: https://pypi.org/project/flake8-return
+  "RUF100",  # Ralternative to yesqa
+  "SIM",  # see: https://pypi.org/project/flake8-simplify
+]
+lint.ignore = [
+  "S101", # todo: Use of `assert` detected
+]
+lint.unfixable = [
+  "F401",
+]
+[tool.ruff.lint.per-file-ignores]
+"setup.py" = ["D100", "SIM115"]
+"scripts_*/**" = [
+    "S", "D"
+]
+"tests/**" = [
+    "S", "D"
+]

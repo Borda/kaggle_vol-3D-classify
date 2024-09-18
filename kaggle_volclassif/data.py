@@ -15,7 +15,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
-from kaggle_volclassif.transforms import crop_volume, RandomAffine, rising_resize, rising_zero_mean
+from kaggle_volclassif.transforms import RandomAffine, crop_volume, rising_resize, rising_zero_mean
 from kaggle_volclassif.utils import interpolate_volume, load_volume_brain
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
@@ -36,22 +36,21 @@ VAL_TRANSFORMS = [
 
 
 class BrainScansDataset(Dataset):
-
     def __init__(
         self,
-        image_dir: str = 'train',
-        df_table: Union[str, pd.DataFrame] = 'train_labels.csv',
+        image_dir: str = "train",
+        df_table: Union[str, pd.DataFrame] = "train_labels.csv",
         scan_types: Union[str, Sequence[str]] = ("FLAIR", "T2w"),
         cache_dir: Optional[str] = None,
         vol_size: Optional[Tuple[int, int, int]] = None,
         crop_thr: Optional[float] = 1e-6,
-        mode: str = 'train',
+        mode: str = "train",
         split: float = 0.8,
         in_memory: bool = False,
         random_state=42,
     ):
         self.image_dir = image_dir
-        self.scan_types = (scan_types, ) if isinstance(scan_types, str) else scan_types
+        self.scan_types = (scan_types,) if isinstance(scan_types, str) else scan_types
         self.cache_dir = cache_dir
         self.vol_size = vol_size
         self.crop_thr = crop_thr
@@ -66,7 +65,7 @@ class BrainScansDataset(Dataset):
             assert os.path.isfile(df_table), f"missing file: {df_table}"
             self.table = pd.read_csv(df_table)
         else:
-            raise ValueError(f'unrecognised input for DataFrame/CSV: {df_table}')
+            raise ValueError(f"unrecognised input for DataFrame/CSV: {df_table}")
 
         # shuffle data
         self.table = self.table.sample(frac=1, random_state=random_state).reset_index(drop=True)
@@ -74,7 +73,7 @@ class BrainScansDataset(Dataset):
         # split dataset
         assert 0.0 <= split <= 1.0, f"split {split} is out of range"
         frac = int(split * len(self.table))
-        self.table = self.table[:frac] if mode == 'train' else self.table[frac:]
+        self.table = self.table[:frac] if mode == "train" else self.table[frac:]
 
         # populate images/labels
         self.images = []
@@ -99,7 +98,7 @@ class BrainScansDataset(Dataset):
         cache_dir: Optional[str] = None,
         crop_thr: Optional[float] = None,
         vol_size: Optional[Tuple[int, int, int]] = None,
-        overwrite: bool = False
+        overwrite: bool = False,
     ) -> Tensor:
         vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
         if os.path.isfile(vol_path) and not overwrite:
@@ -143,12 +142,11 @@ class BrainScansDataset(Dataset):
 
 
 class BrainScansDM(LightningDataModule):
-
     def __init__(
         self,
-        data_dir: str = '.',
-        path_csv: str = 'train_labels.csv',
-        cache_dir: str = '.',
+        data_dir: str = ".",
+        path_csv: str = "train_labels.csv",
+        cache_dir: str = ".",
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
         vol_size: Union[None, int, Tuple[int, int, int]] = 64,
         crop_thr: Optional[float] = 1e-6,
@@ -163,8 +161,8 @@ class BrainScansDM(LightningDataModule):
         super().__init__()
         # path configurations
         assert os.path.isdir(data_dir), f"missing folder: {data_dir}"
-        self.train_dir = os.path.join(data_dir, 'train')
-        self.test_dir = os.path.join(data_dir, 'test')
+        self.train_dir = os.path.join(data_dir, "train")
+        self.test_dir = os.path.join(data_dir, "test")
         self.cache_dir = cache_dir
         self.vol_size = (vol_size, vol_size, vol_size) if isinstance(vol_size, int) else vol_size
 
@@ -282,20 +280,20 @@ class BrainScansDM(LightningDataModule):
             in_memory=self.in_memory,
             **self.ds_defaults,
         )
-        self.train_dataset = BrainScansDataset(**ds_training, mode='train')
+        self.train_dataset = BrainScansDataset(**ds_training, mode="train")
         logging.info(f"training dataset: {len(self.train_dataset)}")
-        self.valid_dataset = BrainScansDataset(**ds_training, mode='valid')
+        self.valid_dataset = BrainScansDataset(**ds_training, mode="valid")
         logging.info(f"validation dataset: {len(self.valid_dataset)}")
 
         if not os.path.isdir(self.test_dir):
             return
-        ls_cases = [os.path.basename(p) for p in glob.glob(os.path.join(self.test_dir, '*'))]
+        ls_cases = [os.path.basename(p) for p in glob.glob(os.path.join(self.test_dir, "*"))]
         self.test_table = [dict(BraTS21ID=n, MGMT_value=None) for n in ls_cases]
         self.test_dataset = BrainScansDataset(
             image_dir=self.test_dir,
             df_table=pd.DataFrame(self.test_table),
             split=0,
-            mode='test',
+            mode="test",
             **self.ds_defaults,
         )
         logging.info(f"test dataset: {len(self.test_dataset)}")
@@ -320,8 +318,8 @@ class BrainScansDM(LightningDataModule):
 
     def test_dataloader(self) -> Optional[DataLoader]:
         if not self.test_dataset:
-            logging.warning('no testing images found')
-            return
+            logging.warning("no testing images found")
+            return None
         return DataLoader(
             self.test_dataset,
             shuffle=False,
