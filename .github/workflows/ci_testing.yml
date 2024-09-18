@@ -7,14 +7,14 @@ on:  # Trigger the workflow on push or pull request, but only for the main branc
   pull_request: {}
 
 jobs:
-  pytest:
+  pytester:
 
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macOS-11, windows-2019]
-        python-version: [3.8]
+        os: ["ubuntu-22.04", "macOS-13", "windows-2022"]
+        python-version: ["3.8"]
 
     # Timeout: https://stackoverflow.com/a/59076067/4521646
     timeout-minutes: 25
@@ -25,43 +25,20 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-
-    # Note: This uses an internal pip API and may not always work
-    # https://github.com/actions/cache/blob/master/examples.md#multiple-oss-in-a-workflow
-    - name: Get pip cache
-      id: pip-cache
-      run: |
-        pip --version
-        python -c "from pip._internal.locations import USER_CACHE_DIR; print('::set-output name=dir::' + USER_CACHE_DIR)"
-
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.python-version }}-pip-
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
-        pip install --requirement requirements.txt --upgrade --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
-        pip install --requirement tests/requirements.txt
+        pip install -r requirements.txt -r tests/requirements.txt \
+          -U --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
         pip list
       shell: bash
 
     - name: Tests
       run: |
-        python -m pytest . -v --cov=kaggle_volclassif --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
-
-    - name: Upload pytest test results
-      uses: actions/upload-artifact@v2
-      with:
-        name: pytest-results-${{ runner.os }}-${{ matrix.python-version }}
-        path: junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
-      if: failure()
+        python -m pytest . -v --cov=kaggle_volclassif
 
     - name: Statistics
-      if: success()
       run: |
         coverage report
         coverage xml
@@ -75,3 +52,18 @@ jobs:
         file: coverage.xml
         flags: cpu,pytest,python${{ matrix.python-version }}
         fail_ci_if_error: false
+
+
+  testing-guardian:
+    runs-on: ubuntu-latest
+    needs: pytester
+    if: always()
+    steps:
+      - run: echo "${{ needs.pytester.result }}"
+      - name: failing...
+        if: needs.pytester.result == 'failure'
+        run: exit 1
+      - name: cancelled or skipped...
+        if: contains(fromJSON('["cancelled", "skipped"]'), needs.pytester.result)
+        timeout-minutes: 1
+        run: sleep 90
