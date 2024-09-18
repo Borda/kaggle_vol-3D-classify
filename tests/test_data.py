@@ -12,8 +12,8 @@ def _generate_synthetic_dataset(
     path_folder: str,
     phase: str = "train",
     nb_users: int = 10,
-    scans: Union[str, Sequence[str]] = 'FLAIR',
-    dim_z: int = 20
+    scans: Union[str, Sequence[str]] = "FLAIR",
+    dim_z: int = 20,
 ):
     random.seed(7)
     path_imgs = os.path.join(path_folder, phase)
@@ -28,14 +28,14 @@ def _generate_synthetic_dataset(
             _generate_sample_volume_brain(path_scan, dim_z)
         labels.append({"BraTS21ID": user, "MGMT_value": random.randint(0, 1)})
 
-    path_csv = os.path.join(path_folder, 'train_labels.csv')
+    path_csv = os.path.join(path_folder, "train_labels.csv")
     pd.DataFrame(labels).set_index("BraTS21ID").to_csv(path_csv)
 
 
 def test_dataset(tmpdir):
-    _generate_synthetic_dataset(tmpdir, scans='FLAIR', nb_users=10)
-    path_imgs = os.path.join(tmpdir, 'train')
-    path_csv = os.path.join(tmpdir, 'train_labels.csv')
+    _generate_synthetic_dataset(tmpdir, scans="FLAIR", nb_users=10)
+    path_imgs = os.path.join(tmpdir, "train")
+    path_csv = os.path.join(tmpdir, "train_labels.csv")
 
     dataset = BrainScansDataset(image_dir=path_imgs, df_table=pd.read_csv(path_csv), scan_types="FLAIR")
     assert len(dataset) == 8
@@ -46,7 +46,7 @@ def test_dataset(tmpdir):
 
 
 def test_datamodule(tmpdir):
-    _generate_synthetic_dataset(tmpdir, scans='FLAIR', nb_users=10)
+    _generate_synthetic_dataset(tmpdir, scans="FLAIR", nb_users=10)
 
     dm = BrainScansDM(data_dir=tmpdir, scan_types="FLAIR", batch_size=2, cache_dir=tmpdir)
     dm.prepare_data()
