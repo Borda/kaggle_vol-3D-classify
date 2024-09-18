@@ -144,15 +144,15 @@ class RandomAffine(rtr.BaseAffine):
         ndim = data[self.keys[0]].ndim - 2
 
         if self.scale_range is not None:
-            self.scale = [random.uniform(*self.scale_range) for _ in range(ndim)]
+            self.scale = [random.uniform(*self.scale_range) for _ in range(ndim)]  # noqa: S311
 
         if self.translation_range is not None:
-            self.translation = [random.uniform(*self.translation_range) for _ in range(ndim)]
+            self.translation = [random.uniform(*self.translation_range) for _ in range(ndim)]  # noqa: S311
 
         if self.rotation_range is not None:
             if ndim == 3:
-                self.rotation = [random.uniform(*self.rotation_range) for _ in range(ndim)]
+                self.rotation = [random.uniform(*self.rotation_range) for _ in range(ndim)]  # noqa: S311
             elif ndim == 1:
-                self.rotation = random.uniform(*self.rotation_range)
+                self.rotation = random.uniform(*self.rotation_range)  # noqa: S311
 
         return super().assemble_matrix(**data)

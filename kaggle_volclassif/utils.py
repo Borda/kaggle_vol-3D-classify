@@ -90,8 +90,7 @@ def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)
         imgs.append(img.tolist())
     vol = np.array(imgs)
 
-    vol = interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
-    return vol
+    return interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
 
 
 def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:
