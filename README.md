@@ -58,6 +58,6 @@ A simple way how to use this basic functions:
 
 ### some results
 
-Training progress with EfficientNet3D with training  for 10 epochs > over 96% validation accuracy:
+Training progress with EfficientNet3D with training for 10 epochs > over 96% validation accuracy:
 
 ![Training process](./assets/metrics.png)
