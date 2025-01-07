@@ -80,7 +80,7 @@ class BrainScansDataset(Dataset):
         self.labels = []
         for _, row in self.table.iterrows():
             id_ = row["BraTS21ID"]
-            name = id_ if isinstance(id_, str) else "%05d" % id_
+            name = id_ if isinstance(id_, str) else f"{id_:05d}"
             imgs = [os.path.join(name, tp) for tp in self.scan_types]
             imgs = [p for p in imgs if os.path.isdir(os.path.join(self.image_dir, p))]
             self.images += imgs

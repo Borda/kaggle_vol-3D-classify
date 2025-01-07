@@ -8,7 +8,7 @@ from kaggle_volclassif.utils import load_dicom, load_volume_brain, load_volume_n
 
 def _generate_sample_volume_brain(path_folder: str, nb: int = 10):
     for i in range(nb):
-        path_img = os.path.join(path_folder, "img-%d.dcm" % i)
+        path_img = os.path.join(path_folder, f"img-{i}.dcm")
         shutil.copy(get_testdata_file("CT_small.dcm"), path_img)
 
 
