@@ -19,7 +19,7 @@ def _generate_synthetic_dataset(
     path_imgs = os.path.join(path_folder, phase)
     labels = []
     for i in range(nb_users):
-        user = "%05d" % i
+        user = f"{i:05d}"
         path_user = os.path.join(path_imgs, user)
         scans = [scans] if isinstance(scans, str) else scans
         for n in scans:
