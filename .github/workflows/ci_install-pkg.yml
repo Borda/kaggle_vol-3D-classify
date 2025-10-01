@@ -54,13 +54,9 @@ jobs:
 
       - name: Install package
         run: |
-          pip install virtualenv
-          virtualenv vEnv
-          source vEnv/bin/activate
+          pip install --only-binary :all: PyYAML==5.4.1
           pip install dist/*
           cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
-          deactivate
-          rm -rf vEnv
 
   install-guardian:
     runs-on: ubuntu-latest
