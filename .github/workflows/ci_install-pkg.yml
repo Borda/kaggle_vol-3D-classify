@@ -54,6 +54,7 @@ jobs:
 
       - name: Install package
         run: |
+          pip install Cython
           pip install dist/*
           cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
 
