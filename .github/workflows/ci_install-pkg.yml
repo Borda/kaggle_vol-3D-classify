@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macOS-14"]  #, windows-2019
+        os: ["ubuntu-latest"]  #, windows-2019
         python-version: ["3.9"]
 
     steps:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Install package
         run: |
-          pip install dist/* --no-build-isolation
+          pip install dist/*
           cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
 
   install-guardian:
