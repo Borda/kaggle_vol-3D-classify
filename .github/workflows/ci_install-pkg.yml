@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macOS-latest"]  #, windows-2019
+        os: ["ubuntu-latest", "macOS-14"]  #, windows-2019
         python-version: ["3.9"]
 
     steps:
