@@ -54,7 +54,7 @@ jobs:
 
       - name: Install package
         run: |
-          pip install --only-binary :all: PyYAML==5.4.1
+          pip install -U --only-binary :all: PyYAML
           pip install dist/*
           cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
 
