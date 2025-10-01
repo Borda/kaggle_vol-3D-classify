@@ -54,7 +54,7 @@ jobs:
 
       - name: Install package
         run: |
-          pip install Cython "setuptools<58.0"
+          pip install Cython "setuptools<50.0"
           pip install dist/*
           cd .. & python -c "import kaggle_volclassif ; print(kaggle_volclassif.__version__)"
 
