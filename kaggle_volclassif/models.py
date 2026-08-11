@@ -83,8 +83,6 @@ class FineTuneCB(Callback):
             return
         for n, param in pl_module.net.named_parameters():
             param.requires_grad = True
-        optimizers, _ = pl_module.configure_optimizers()
-        trainer.optimizers = optimizers
 
 
 class LitBrainMRI(LightningModule):
