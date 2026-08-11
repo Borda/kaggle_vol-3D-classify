@@ -14,7 +14,7 @@ from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-from torchmetrics import AUROC, F1, Accuracy
+from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryF1Score
 from tqdm.auto import tqdm
 
 
@@ -40,7 +40,7 @@ def create_pretrained_medical_resnet(
         **kwargs_monai_resnet,
     )
     net_dict = net.state_dict()
-    pretrain = torch.load(pretrained_path)
+    pretrain = torch.load(pretrained_path, weights_only=True)
     pretrain["state_dict"] = {k.replace("module.", ""): v for k, v in pretrain["state_dict"].items()}
     missing = tuple({k for k in net_dict if k not in pretrain["state_dict"]})
     logging.debug(f"missing in pretrained: {len(missing)}")
@@ -78,7 +78,7 @@ class FineTuneCB(Callback):
     def __init__(self, unfreeze_epoch: int) -> None:
         self.unfreeze_epoch = unfreeze_epoch
 
-    def on_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+    def on_train_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         if trainer.current_epoch != self.unfreeze_epoch:
             return
         for n, param in pl_module.net.named_parameters():
@@ -108,12 +108,12 @@ class LitBrainMRI(LightningModule):
         self.learning_rate = lr
         self.optimizer = optimizer or AdamW
 
-        self.train_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.train_acc = Accuracy(num_classes=1)
-        self.train_f1_score = F1()
-        self.val_auroc = AUROC(num_classes=1, compute_on_step=False)
-        self.val_acc = Accuracy(num_classes=1)
-        self.val_f1_score = F1()
+        self.train_auroc = BinaryAUROC()
+        self.train_acc = BinaryAccuracy()
+        self.train_f1_score = BinaryF1Score()
+        self.val_auroc = BinaryAUROC()
+        self.val_acc = BinaryAccuracy()
+        self.val_f1_score = BinaryF1Score()
 
     def forward(self, x: Tensor) -> Tensor:
         return torch.sigmoid(self.net(x)[:, 0])

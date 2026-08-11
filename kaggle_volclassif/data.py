@@ -1,5 +1,6 @@
 import glob
 import logging
+import math
 import os
 from collections.abc import Sequence
 from functools import partial
@@ -7,33 +8,38 @@ from multiprocessing import Pool
 from typing import Any
 
 import pandas as pd
-import rising.transforms as rtr
 import torch
+from monai.data import DataLoader
+from monai.transforms import Compose, NormalizeIntensityd, RandAffined, RandAxisFlipd, RandRotate90d
 from pytorch_lightning import LightningDataModule
-from rising.loading import DataLoader
-from rising.random import DiscreteParameter
 from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
-from kaggle_volclassif.transforms import RandomAffine, crop_volume, rising_resize, rising_zero_mean
+from kaggle_volclassif.transforms import crop_volume
 from kaggle_volclassif.utils import interpolate_volume, load_volume_brain
 
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 # Crop Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
 # Full Dataset >> mean: 0.09317479282617569 STD: 0.2139676809310913
-rising_norm_intensity = partial(rising_zero_mean, mean=0.093, std=0.214)
+norm_intensity = NormalizeIntensityd(keys=["data"], subtrahend=0.093, divisor=0.214)
 
 # define transformations
-TRAIN_TRANSFORMS = [
-    rtr.Rot90((0, 1, 2), keys=["data"], p=0.5),
-    rtr.Mirror(dims=DiscreteParameter([0, 1, 2]), keys=["data"]),
-    RandomAffine(scale_range=(0.9, 1.1), rotation_range=(-10, 10), translation_range=(-0.1, 0.1)),
-    rising_norm_intensity,
-]
-VAL_TRANSFORMS = [
-    rising_norm_intensity,
-]
+TRAIN_TRANSFORMS = Compose([
+    RandRotate90d(keys=["data"], prob=0.5, max_k=3, spatial_axes=(0, 1)),
+    RandAxisFlipd(keys=["data"], prob=0.5),
+    RandAffined(
+        keys=["data"],
+        prob=0.5,
+        scale_range=0.1,
+        rotate_range=math.radians(10),
+        translate_range=6,  # voxels, ~10% of the default vol_size=64
+        mode="nearest",
+        padding_mode="zeros",
+    ),
+    norm_intensity,
+])
+VAL_TRANSFORMS = Compose([norm_intensity])
 
 
 class BrainScansDataset(Dataset):
@@ -49,6 +55,7 @@ class BrainScansDataset(Dataset):
         split: float = 0.8,
         in_memory: bool = False,
         random_state=42,
+        transform=None,
     ):
         self.image_dir = image_dir
         self.scan_types = (scan_types,) if isinstance(scan_types, str) else scan_types
@@ -57,6 +64,7 @@ class BrainScansDataset(Dataset):
         self.crop_thr = crop_thr
         self.mode = mode
         self.in_memory = in_memory
+        self.transform = transform
 
         # set or load the config table
         if isinstance(df_table, pd.DataFrame):
@@ -104,7 +112,7 @@ class BrainScansDataset(Dataset):
         vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
         if os.path.isfile(vol_path) and not overwrite:
             try:
-                return torch.load(vol_path).to(torch.float32)
+                return torch.load(vol_path, weights_only=True).to(torch.float32)
             except (EOFError, RuntimeError):
                 print(f"failed loading: {vol_path}")
         img_path = os.path.join(image_dir, rltv_path)
@@ -134,9 +142,16 @@ class BrainScansDataset(Dataset):
         img = self._load_image(img_) if isinstance(img_, str) else img_
         if self.in_memory:
             self.images[idx] = img
+        # crop_volume (in _load_image) can change the shape after the initial interpolation, so
+        # resize here unconditionally, regardless of whether an augmentation transform is set.
+        # vol_size=None falls back to interpolate_volume's own per-sample shape inference, which
+        # does not guarantee a uniform shape across a batch — matches load_image's own unconditional
+        # call above and is a pre-existing limitation of the vol_size=None config, not new here.
+        img = interpolate_volume(img, self.vol_size)
         # in case of predictions, return image name as label
         label = label if label is not None else img_
-        return {"data": img.unsqueeze(0), "label": label}
+        sample = {"data": img.unsqueeze(0), "label": label}
+        return self.transform(sample) if self.transform else sample
 
     def __len__(self) -> int:
         return len(self.images)
@@ -205,7 +220,6 @@ class BrainScansDM(LightningDataModule):
         return dict(
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            sample_transforms=partial(rising_resize, size=self.vol_size),
         )
 
     @staticmethod
@@ -281,9 +295,9 @@ class BrainScansDM(LightningDataModule):
             in_memory=self.in_memory,
             **self.ds_defaults,
         )
-        self.train_dataset = BrainScansDataset(**ds_training, mode="train")
+        self.train_dataset = BrainScansDataset(**ds_training, mode="train", transform=self.train_transforms)
         logging.info(f"training dataset: {len(self.train_dataset)}")
-        self.valid_dataset = BrainScansDataset(**ds_training, mode="valid")
+        self.valid_dataset = BrainScansDataset(**ds_training, mode="valid", transform=self.valid_transforms)
         logging.info(f"validation dataset: {len(self.valid_dataset)}")
 
         if not os.path.isdir(self.test_dir):
@@ -295,6 +309,7 @@ class BrainScansDM(LightningDataModule):
             df_table=pd.DataFrame(self.test_table),
             split=0,
             mode="test",
+            transform=self.valid_transforms,
             **self.ds_defaults,
         )
         logging.info(f"test dataset: {len(self.test_dataset)}")
@@ -303,7 +318,6 @@ class BrainScansDM(LightningDataModule):
         return DataLoader(
             self.train_dataset,
             shuffle=True,
-            batch_transforms=self.train_transforms,
             **self.dl_defaults,
             **self.kwargs_dataloader,
         )
@@ -312,7 +326,6 @@ class BrainScansDM(LightningDataModule):
         return DataLoader(
             self.valid_dataset,
             shuffle=False,
-            batch_transforms=self.valid_transforms,
             **self.dl_defaults,
             **self.kwargs_dataloader,
         )
@@ -324,7 +337,6 @@ class BrainScansDM(LightningDataModule):
         return DataLoader(
             self.test_dataset,
             shuffle=False,
-            batch_transforms=self.valid_transforms,
             **self.dl_defaults,
             **self.kwargs_dataloader,
         )
