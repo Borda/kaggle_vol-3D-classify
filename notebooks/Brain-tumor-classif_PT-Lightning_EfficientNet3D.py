@@ -195,9 +195,9 @@ TRAIN_TRANSFORMS = Compose([
     RandAffined(
         keys=["data"],
         prob=0.5,
-        scale_range=0.1,
-        rotate_range=math.radians(10),
-        translate_range=6,  # voxels, ~10% of the default vol_size=64
+        scale_range=(0.1,) * 3,
+        rotate_range=(math.radians(10),) * 3,
+        translate_range=(6,) * 3,
         mode="nearest",
         padding_mode="zeros",
     ),
