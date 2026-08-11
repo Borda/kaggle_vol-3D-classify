@@ -17,7 +17,7 @@
 #
 # The goal of this challenge is to Predict the status of a genetic biomarker important for brain cancer treatment.
 #
-# All the code is refered from public repository: https://github.com/Borda/kaggle_vol-3D-classify
+# All the code is referred from public repository: https://github.com/Borda/kaggle_vol-3D-classify
 # Any nice contribution is welcome!
 
 # %%
@@ -26,9 +26,9 @@
 # ! pip uninstall -q -y wandb
 # ! pip list | grep torch
 
-# ! ls -l /home/jovyan/work/rsna-miccai-brain-tumor
+# ! ls -l $PATH_DATASET
 # ! nvidia-smi
-# ! mkdir /home/jovyan/temp
+# ! mkdir $PATH_TEMP
 
 # %matplotlib inline
 # %reload_ext autoreload
@@ -71,8 +71,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-PATH_DATASET = "/home/jovyan/work/rsna-miccai-brain-tumor"
-PATH_TEMP = "/home/jovyan/temp"
+_IS_KAGGLE = os.path.isdir("/kaggle/input")
+_IS_COLAB = os.path.isdir("/content")
+if _IS_KAGGLE:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "/kaggle/working/brain-tumor")
+elif _IS_COLAB:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "/content/rsna-miccai-brain-tumor")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "/content/brain-tumor")
+else:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "data/rsna-miccai-brain-tumor")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "data/brain-tumor")
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 
 df_train = pd.read_csv(os.path.join(PATH_DATASET, "train_labels.csv"))
