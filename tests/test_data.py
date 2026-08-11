@@ -1,6 +1,6 @@
 import os
 import random
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -12,7 +12,7 @@ def _generate_synthetic_dataset(
     path_folder: str,
     phase: str = "train",
     nb_users: int = 10,
-    scans: Union[str, Sequence[str]] = "FLAIR",
+    scans: str | Sequence[str] = "FLAIR",
     dim_z: int = 20,
 ):
     random.seed(7)

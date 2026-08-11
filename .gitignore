@@ -130,6 +130,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# JetBrain IDE
+# JetBrain IDEs
 .idea/
 .junie/

@@ -1,9 +1,10 @@
 import glob
 import logging
 import os
+from collections.abc import Sequence
 from functools import partial
 from multiprocessing import Pool
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import pandas as pd
 import rising.transforms as rtr
@@ -39,11 +40,11 @@ class BrainScansDataset(Dataset):
     def __init__(
         self,
         image_dir: str = "train",
-        df_table: Union[str, pd.DataFrame] = "train_labels.csv",
-        scan_types: Union[str, Sequence[str]] = ("FLAIR", "T2w"),
-        cache_dir: Optional[str] = None,
-        vol_size: Optional[Tuple[int, int, int]] = None,
-        crop_thr: Optional[float] = 1e-6,
+        df_table: str | pd.DataFrame = "train_labels.csv",
+        scan_types: str | Sequence[str] = ("FLAIR", "T2w"),
+        cache_dir: str | None = None,
+        vol_size: tuple[int, int, int] | None = None,
+        crop_thr: float | None = 1e-6,
         mode: str = "train",
         split: float = 0.8,
         in_memory: bool = False,
@@ -95,9 +96,9 @@ class BrainScansDataset(Dataset):
     def load_image(
         rltv_path: str,
         image_dir: str,
-        cache_dir: Optional[str] = None,
-        crop_thr: Optional[float] = None,
-        vol_size: Optional[Tuple[int, int, int]] = None,
+        cache_dir: str | None = None,
+        crop_thr: float | None = None,
+        vol_size: tuple[int, int, int] | None = None,
         overwrite: bool = False,
     ) -> Tensor:
         vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
@@ -148,11 +149,11 @@ class BrainScansDM(LightningDataModule):
         path_csv: str = "train_labels.csv",
         cache_dir: str = ".",
         scan_types: Sequence[str] = ("FLAIR", "T2w"),
-        vol_size: Union[None, int, Tuple[int, int, int]] = 64,
-        crop_thr: Optional[float] = 1e-6,
+        vol_size: None | int | tuple[int, int, int] = 64,
+        crop_thr: float | None = 1e-6,
         in_memory: bool = False,
         batch_size: int = 4,
-        num_workers: Optional[int] = None,
+        num_workers: int | None = None,
         train_transforms=None,
         valid_transforms=None,
         split: float = 0.8,
@@ -191,7 +192,7 @@ class BrainScansDM(LightningDataModule):
         self.image_std = None
 
     @property
-    def ds_defaults(self) -> Dict[str, Any]:
+    def ds_defaults(self) -> dict[str, Any]:
         # some other configs
         return dict(
             scan_types=self.scan_types,
@@ -200,7 +201,7 @@ class BrainScansDM(LightningDataModule):
         )
 
     @property
-    def dl_defaults(self) -> Dict[str, Any]:
+    def dl_defaults(self) -> dict[str, Any]:
         return dict(
             batch_size=self.batch_size,
             num_workers=self.num_workers,
@@ -212,10 +213,10 @@ class BrainScansDM(LightningDataModule):
         rltv_path: str,
         image_dir: str,
         cache_dir: str,
-        vol_size: Optional[Tuple[int, int, int]] = None,
+        vol_size: tuple[int, int, int] | None = None,
         overwrite: bool = False,
         **kwargs_load,
-    ) -> Optional[Tensor]:
+    ) -> Tensor | None:
         vol_path = BrainScansDataset.cached_image(rltv_path, cache_dir)
         if os.path.isfile(vol_path) and not overwrite:
             return None
@@ -223,7 +224,7 @@ class BrainScansDM(LightningDataModule):
             rltv_path, image_dir=image_dir, cache_dir=cache_dir, vol_size=vol_size, overwrite=overwrite, **kwargs_load
         )
 
-    def prepare_data(self, num_proc: int = 0, dataset: Optional[BrainScansDataset] = None, overwrite: bool = False):
+    def prepare_data(self, num_proc: int = 0, dataset: BrainScansDataset | None = None, overwrite: bool = False):
         if not self.cache_dir:
             return
 
@@ -316,7 +317,7 @@ class BrainScansDM(LightningDataModule):
             **self.kwargs_dataloader,
         )
 
-    def test_dataloader(self) -> Optional[DataLoader]:
+    def test_dataloader(self) -> DataLoader | None:
         if not self.test_dataset:
             logging.warning("no testing images found")
             return None

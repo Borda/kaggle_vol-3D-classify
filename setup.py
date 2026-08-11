@@ -49,7 +49,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     keywords=["deep learning", "pytorch", "AI"],
-    python_requires=">=3.6",
+    python_requires=">=3.10",
     setup_requires=[],
     install_requires=_load_requirements(_PATH_ROOT),
     project_urls={
