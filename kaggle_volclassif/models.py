@@ -1,7 +1,8 @@
 import logging
 import os
+from collections.abc import Sequence
 from contextlib import suppress
-from typing import Any, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Optional, Tuple, Type, Union
 
 import pandas as pd
 import pytorch_lightning as pl
@@ -24,7 +25,7 @@ def create_pretrained_medical_resnet(
     n_input_channels: int = 1,
     num_classes: int = 1,
     **kwargs_monai_resnet: Any,
-) -> Tuple[ResNet, Sequence[str]]:
+) -> tuple[ResNet, Sequence[str]]:
     """This si specific constructor for MONAI ResNet module loading MedicalNEt weights.
 
     See:
@@ -89,10 +90,10 @@ class FineTuneCB(Callback):
 class LitBrainMRI(LightningModule):
     def __init__(
         self,
-        net: Union[nn.Module, str] = "efficientnet-b0",
-        pretrained_params: Optional[Sequence[str]] = None,
+        net: nn.Module | str = "efficientnet-b0",
+        pretrained_params: Sequence[str] | None = None,
         lr: float = 1e-3,
-        optimizer: Optional[Type[Optimizer]] = None,
+        optimizer: type[Optimizer] | None = None,
     ):
         super().__init__()
         if isinstance(net, str):

@@ -22,7 +22,7 @@ def parse_name_index(dcm_path) -> int:
 
 def load_dicom(
     path_file: str,
-) -> Optional[np.ndarray]:
+) -> np.ndarray | None:
     dicom = pydicom.dcmread(path_file)
     # TODO: adjust spacing in particular dimension according DICOM meta
     try:
@@ -35,9 +35,9 @@ def load_dicom(
 
 def norm_image(
     img: np.ndarray,
-    norm_range: Union[int, float] = np.uint8(255),
-    scale: Optional[float] = None,
-    denoising_h: Optional[int] = 3,
+    norm_range: int | float = np.uint8(255),
+    scale: float | None = None,
+    denoising_h: int | None = 3,
     adapt_equalize: bool = False,
 ) -> np.ndarray:
     if norm_range:
@@ -59,7 +59,7 @@ def norm_image(
     return img
 
 
-def load_volume_brain(path_volume: str, percentile: Optional[float] = 0.01) -> Tensor:
+def load_volume_brain(path_volume: str, percentile: float | None = 0.01) -> Tensor:
     path_slices = glob.glob(os.path.join(path_volume, "*.dcm"))
     path_slices = sorted(path_slices, key=parse_name_index)
     vol = []
@@ -78,7 +78,7 @@ def load_volume_brain(path_volume: str, percentile: Optional[float] = 0.01) -> T
     return volume.T
 
 
-def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)) -> np.ndarray:
+def load_volume_neck(dir_path: str, size: tuple[int, int, int] = (256, 256, 256)) -> np.ndarray:
     ls_imgs = glob.glob(os.path.join(dir_path, "*.dcm"))
     ls_imgs = sorted(ls_imgs, key=lambda p: int(os.path.splitext(os.path.basename(p))[0]))
 
@@ -93,7 +93,7 @@ def load_volume_neck(dir_path: str, size: Tuple[int, int, int] = (256, 256, 256)
     return interpolate_volume(torch.tensor(vol, dtype=torch.float32), size).numpy()
 
 
-def interpolate_volume(volume: Tensor, vol_size: Optional[Tuple[int, int, int]] = None) -> Tensor:
+def interpolate_volume(volume: Tensor, vol_size: tuple[int, int, int] | None = None) -> Tensor:
     """Interpolate volume in last (Z) dimension
 
     >>> vol = torch.rand(64, 64, 12)
@@ -123,7 +123,7 @@ def show_volume_slice(axarr_, vol_slice, ax_name: str, v_min_max: tuple = (0.0, 
     axarr_[1].grid()
 
 
-def idx_middle_if_none(volume: Tensor, *xyz: Optional[int]):
+def idx_middle_if_none(volume: Tensor, *xyz: int | None):
     xyz = list(xyz)
     vol_shape = volume.shape
     for i, d in enumerate(xyz):
@@ -135,10 +135,10 @@ def idx_middle_if_none(volume: Tensor, *xyz: Optional[int]):
 
 def show_volume(
     volume: Tensor,
-    x: Optional[int] = None,
-    y: Optional[int] = None,
-    z: Optional[int] = None,
-    fig_size: Tuple[int, int] = (14, 9),
+    x: int | None = None,
+    y: int | None = None,
+    z: int | None = None,
+    fig_size: tuple[int, int] = (14, 9),
     v_min_max: tuple = (0.0, 1.0),
 ):
     """Show volume in the three axis/cuts.
