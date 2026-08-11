@@ -11,6 +11,7 @@ norecursedirs = [
   "dist",
   "build",
   "docs",
+  "notebooks",
 ]
 addopts = [
   "--strict-markers",
