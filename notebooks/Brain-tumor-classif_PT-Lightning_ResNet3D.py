@@ -17,7 +17,7 @@
 #
 # The goal of this challenge is to Predict the status of a genetic biomarker important for brain cancer treatment.
 #
-# All the code is refered from public repository: https://github.com/Borda/kaggle_vol-3D-classify
+# All the code is referred from public repository: https://github.com/Borda/kaggle_vol-3D-classify
 # Any nice contribution is welcome!
 
 # %%
@@ -56,7 +56,7 @@ print(kaggle_volclassif.__version__)
 #
 # #### according to https://www.aapm.org/meetings/amos2/pdf/34-8205-79886-720.pdf
 #
-# - T1: weighting better deliniates anatomy
+# - T1: weighting better delineates anatomy
 # - T2: weighting naturally shows pathology
 #
 # #### according to https://radiopaedia.org/articles/fluid-attenuated-inversion-recovery
@@ -135,7 +135,7 @@ interactive_show(PATH_SAMPLE_VOLUME, crop_thr=1e-6)
 #
 # ### Pytorch Dataset
 #
-# The basic building block is traforming raw data to Torch Dataset.
+# The basic building block is transforming raw data to Torch Dataset.
 # We have here loading particular DICOM images into a volume and saving as temp/cacher, so we do not need to take the very time demanding loading do next time - this boost the IO from about 2h to 8min
 #
 # At the end we show a few sample images from prepared dataset.
@@ -166,9 +166,9 @@ for i in tqdm(range(2)):
 # %% [markdown]
 # ### Lightning DataModule
 #
-# It is constric to wrap all data-related peaces and define Pytoch dataloder for Training / Validation / Testing phase.
+# It is convenient to wrap all data-related pieces and define PyTorch dataloader for Training / Validation / Testing phase.
 #
-# At the end we show a few sample images from the fost training batch.
+# At the end we show a few sample images from the first training batch.
 
 # %%
 from functools import partial
@@ -215,7 +215,7 @@ for batch in dm.train_dataloader():
 # %% [markdown]
 # ## Prepare 3D model
 #
-# LightningModule is the core of PL, it wrappes all model related peaces, mainly:
+# LightningModule is the core of PL, it wraps all model related pieces, mainly:
 #
 # - the model/architecture/weights
 # - evaluation metrics
@@ -274,7 +274,7 @@ ckpt = pl.callbacks.ModelCheckpoint(
 trainer = pl.Trainer(
     # overfit_batches=5,
     # fast_dev_run=True,
-    gpus=[1],
+    gpus=1,
     callbacks=[ckpt, fine],  # , swa
     logger=[csv_logger, tb_logger],
     max_epochs=35,
@@ -340,7 +340,7 @@ for batch in dm.test_dataloader():
     with torch.no_grad():
         preds = model(imgs)
     print(preds)
-    probs = torch.nn.functional.softmax(preds)
+    probs = torch.nn.functional.softmax(preds, dim=1)
     print(probs)
     break
 
