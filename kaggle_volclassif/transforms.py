@@ -1,5 +1,6 @@
 import random
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import rising.transforms as rtr
@@ -68,7 +69,7 @@ def crop_volume(volume: Tensor, thr: float = 1e-6) -> Tensor:
     ]
 
 
-def rising_resize(size: Union[str, Tuple] = 64, **batch) -> Dict[str, Any]:
+def rising_resize(size: str | tuple = 64, **batch) -> dict[str, Any]:
     """Augmentation.
 
     >>> batch = {"data": torch.rand(2, 64, 64, 12)}
@@ -91,7 +92,7 @@ def rising_resize(size: Union[str, Tuple] = 64, **batch) -> Dict[str, Any]:
     return batch
 
 
-def rising_zero_mean(mean: float = 0.5, std: float = 0.2, **batch) -> Dict[str, Any]:
+def rising_zero_mean(mean: float = 0.5, std: float = 0.2, **batch) -> dict[str, Any]:
     img = batch["data"]
     batch.update({"data": (img - mean) / std})
     return batch
@@ -111,7 +112,7 @@ class RandomAffine(rtr.BaseAffine):
         image_transform: bool = True,
         keys: Sequence = ("data",),
         grad: bool = False,
-        output_size: Optional[tuple] = None,
+        output_size: tuple | None = None,
         adjust_size: bool = False,
         interpolation_mode: str = "nearest",
         padding_mode: str = "zeros",
