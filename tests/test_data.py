@@ -1,7 +1,6 @@
 import os
 import random
 from collections.abc import Sequence
-from typing import Union
 
 import pandas as pd
 

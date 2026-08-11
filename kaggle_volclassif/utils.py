@@ -2,7 +2,6 @@ import glob
 import logging
 import os
 import re
-from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np

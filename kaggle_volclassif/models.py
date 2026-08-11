@@ -2,7 +2,7 @@ import logging
 import os
 from collections.abc import Sequence
 from contextlib import suppress
-from typing import Any, Optional, Tuple, Type, Union
+from typing import Any
 
 import pandas as pd
 import pytorch_lightning as pl
