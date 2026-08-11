@@ -30,9 +30,9 @@
 # ! pip list | grep torch
 
 # %%
-# ! ls -l /home/jirka/Datasets/rsna-miccai-brain-tumor
+# ! ls -l $PATH_DATASET
 # ! nvidia-smi -L
-# ! mkdir /home/jirka/TEMP/brain-tumor
+# ! mkdir $PATH_TEMP
 
 # %matplotlib inline
 # %reload_ext autoreload
@@ -75,9 +75,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-PATH_DATASET = "/home/jirka/Datasets/rsna-miccai-brain-tumor"
-PATH_MODELS = "/home/jirka/Workspace/pretrained_medical"
-PATH_TEMP = "/home/jirka/TEMP/brain-tumor"
+_IS_KAGGLE = os.path.isdir("/kaggle/input")
+_IS_COLAB = os.path.isdir("/content")
+if _IS_KAGGLE:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "/kaggle/input/rsna-miccai-brain-tumor-radiogenomic-classification")
+    PATH_MODELS = os.environ.get("PATH_MODELS", "/kaggle/input/pretrained-medical")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "/kaggle/working/brain-tumor")
+elif _IS_COLAB:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "/content/rsna-miccai-brain-tumor")
+    PATH_MODELS = os.environ.get("PATH_MODELS", "/content/pretrained_medical")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "/content/brain-tumor")
+else:
+    PATH_DATASET = os.environ.get("PATH_DATASET", "data/rsna-miccai-brain-tumor")
+    PATH_MODELS = os.environ.get("PATH_MODELS", "data/pretrained_medical")
+    PATH_TEMP = os.environ.get("PATH_TEMP", "data/brain-tumor")
 SCAN_TYPES = ("FLAIR", "T1w", "T1CE", "T2w")
 
 df_train = pd.read_csv(os.path.join(PATH_DATASET, "train_labels.csv"))
