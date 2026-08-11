@@ -74,11 +74,13 @@ docs/_build/
 # PyBuilder
 target/
 
+# COmpetition resources
+resources/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 # notebooks kept as jupytext py:percent scripts, ipynb generated locally only
 *.ipynb
-
 # IPython
 profile_default/
 ipython_config.py
@@ -133,3 +135,9 @@ dmypy.json
 # JetBrain IDEs
 .idea/
 .junie/
+
+# AI artifacts
+.claude/state/
+.plans/
+.reports/
+.temp/
