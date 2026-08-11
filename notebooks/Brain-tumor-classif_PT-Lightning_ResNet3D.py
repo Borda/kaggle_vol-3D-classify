@@ -38,6 +38,8 @@
 # %reload_ext autoreload
 # %autoreload 2
 
+from IPython.display import display
+
 import kaggle_volclassif
 
 print(kaggle_volclassif.__version__)
