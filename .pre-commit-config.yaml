@@ -18,16 +18,22 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
-        exclude: .*\.ipynb
         args: ['--maxkb=250', '--enforce-all']
       - id: check-docstring-first
       - id: detect-private-key
+
+  - repo: https://github.com/mwouts/jupytext
+    rev: v1.19.1
+    hooks:
+      - id: jupytext
+        args: ['--test-strict', '--to', 'ipynb']
+        files: ^notebooks/.*\.py$
 
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.22
     hooks:
       - id: mdformat
-        args: ['--number']
+        args: ['--number', "--wrap=no"]
         additional_dependencies:
           - mdformat-gfm
           - mdformat-black
