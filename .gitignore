@@ -76,6 +76,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+# notebooks kept as jupytext py:percent scripts, ipynb generated locally only
+*.ipynb
 
 # IPython
 profile_default/
@@ -127,3 +129,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# JetBrain IDE
+.idea/
+.junie/
