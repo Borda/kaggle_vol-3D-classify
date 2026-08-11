@@ -184,14 +184,33 @@ for i in tqdm(range(2)):
 # At the end we show a few sample images from the first training batch.
 
 # %%
-from functools import partial
+import math
 
-import rising.transforms as rtr
-from rising.loading import DataLoader, default_transform_call
-from rising.random import DiscreteParameter, UniformParameter
+from monai.transforms import Compose, NormalizeIntensityd, RandAffined, RandAxisFlipd, RandRotate90d
 
-from kaggle_volclassif.data import TRAIN_TRANSFORMS, VAL_TRANSFORMS, BrainScansDM
-from kaggle_volclassif.transforms import RandomAffine, rising_zero_mean
+from kaggle_volclassif.data import BrainScansDM
+
+# ==============================
+
+# Dataset >> mean: 0.13732214272022247 STD: 0.24326834082603455
+norm_intensity = NormalizeIntensityd(keys=["data"], subtrahend=0.137, divisor=0.243)
+
+# define transformations
+TRAIN_TRANSFORMS = Compose([
+    RandRotate90d(keys=["data"], prob=0.5, max_k=3, spatial_axes=(0, 1)),
+    RandAxisFlipd(keys=["data"], prob=0.5),
+    RandAffined(
+        keys=["data"],
+        prob=0.5,
+        scale_range=0.1,
+        rotate_range=math.radians(10),
+        translate_range=6,  # voxels, ~10% of the default vol_size=64
+        mode="nearest",
+        padding_mode="zeros",
+    ),
+    norm_intensity,
+])
+VAL_TRANSFORMS = Compose([norm_intensity])
 
 # ==============================
 
@@ -209,8 +228,8 @@ dm = BrainScansDM(
     in_memory=True,
     num_workers=64,
     split=0.9,
-    train_transforms=rtr.Compose(TRAIN_TRANSFORMS, transform_call=default_transform_call),
-    valid_transforms=rtr.Compose(VAL_TRANSFORMS, transform_call=default_transform_call),
+    train_transforms=TRAIN_TRANSFORMS,
+    valid_transforms=VAL_TRANSFORMS,
 )
 dm.prepare_data(num_proc=0)
 dm.setup()
@@ -265,6 +284,7 @@ model = LitBrainMRI(net=net, pretrained_params=None, lr=5e-4, optimizer=Adamax)
 
 # %%
 import pytorch_lightning as pl
+from pytorch_lightning.tuner import Tuner
 
 from kaggle_volclassif.models import FineTuneCB
 
@@ -287,7 +307,8 @@ ckpt = pl.callbacks.ModelCheckpoint(
 trainer = pl.Trainer(
     # overfit_batches=5,
     # fast_dev_run=True,
-    gpus=1,
+    accelerator="gpu",
+    devices=1,
     callbacks=[ckpt, fine],  # , swa
     logger=[csv_logger, tb_logger],
     max_epochs=35,
@@ -295,21 +316,13 @@ trainer = pl.Trainer(
     benchmark=True,
     accumulate_grad_batches=12,
     # val_check_interval=0.5,
-    progress_bar_refresh_rate=1,
     log_every_n_steps=5,
-    weights_summary="top",
-    auto_lr_find=True,
-    #     auto_scale_batch_size='binsearch',
 )
 
 # ==============================
 
-trainer.tune(
-    model,
-    datamodule=dm,
-    lr_find_kwargs=dict(min_lr=2e-5, max_lr=1e-2, num_training=25),
-    # scale_batch_size_kwargs=dict(max_trials=5),
-)
+tuner = Tuner(trainer)
+tuner.lr_find(model, datamodule=dm, min_lr=2e-5, max_lr=1e-2, num_training=25)
 print(f"Batch size: {dm.batch_size}")
 print(f"Learning Rate: {model.learning_rate}")
 
