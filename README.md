@@ -1,8 +1,6 @@
 # Kaggle competitions on 3D volumes
 
-[![CI complete testing](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml)
-[![codecov](https://codecov.io/gh/Borda/kaggle_vol-3D-classify/branch/main/graph/badge.svg?token=bxqTQDXHvU)](https://codecov.io/gh/Borda/kaggle_vol-3D-classify)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Borda/kaggle_vol-3D-classify/main.svg)](https://results.pre-commit.ci/latest/github/Borda/kaggle_vol-3D-classify/main)
+[![CI complete testing](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml/badge.svg?branch=main&event=push)](https://github.com/Borda/kaggle_vol-3D-classify/actions/workflows/ci_testing.yml) [![codecov](https://codecov.io/gh/Borda/kaggle_vol-3D-classify/branch/main/graph/badge.svg?token=bxqTQDXHvU)](https://codecov.io/gh/Borda/kaggle_vol-3D-classify) [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Borda/kaggle_vol-3D-classify/main.svg)](https://results.pre-commit.ci/latest/github/Borda/kaggle_vol-3D-classify/main)
 
 ## Kaggle: [Cervical Spine Fracture Detection](https://www.kaggle.com/competitions/rsna-2022-cervical-spine-fracture-detection)
 
@@ -23,9 +21,7 @@ The goal of this challenge is to Predict the status of a genetic biomarker impor
 
 </details>
 
-Each independent case has a dedicated folder identified by a five-digit number.
-Within each of these “case” folders, there are four sub-folders, each of them corresponding to each of the structural multi-parametric MRI (mpMRI) scans, in DICOM format.
-The exact mpMRI scans included are:
+Each independent case has a dedicated folder identified by a five-digit number. Within each of these “case” folders, there are four sub-folders, each of them corresponding to each of the structural multi-parametric MRI (mpMRI) scans, in DICOM format. The exact mpMRI scans included are:
 
 - **FLAIR**: Fluid Attenuated Inversion Recovery
 - **T1w**: T1-weighted pre-contrast
