@@ -69,6 +69,7 @@ lint.unfixable = [
   "F401",
   "F811",
   "E402",
+  "E501",
 ]
 "scripts_*/**" = [
   "S",
