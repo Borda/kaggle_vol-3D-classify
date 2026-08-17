@@ -1,22 +1,8 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.19.1
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
 # %% [markdown]
 # # Brain Tumor Classification with PyTorch⚡Lightning & ResNet 3D
-#
+
 # The goal of this challenge is to Predict the status of a genetic biomarker important for brain cancer treatment.
-#
+
 # All the code is referred from public repository: https://github.com/Borda/kaggle_vol-3D-classify
 # Any nice contribution is welcome!
 
@@ -46,27 +32,27 @@ print(kaggle_volclassif.__version__)
 
 # %% [markdown]
 # ## Data exploration
-#
+
 # These 3 cohorts are structured as follows: Each independent case has a dedicated folder identified by a five-digit number.
 # Within each of these “case” folders, there are four sub-folders, each of them corresponding to each of the structural multi-parametric MRI (mpMRI) scans, in DICOM format.
 # The exact mpMRI scans included are:
-#
+
 # - **FLAIR**: Fluid Attenuated Inversion Recovery
 # - **T1w**: T1-weighted pre-contrast
 # - **T1Gd**: T1-weighted post-contrast
 # - **T2w**: T2-weighted
-#
+
 # #### according to https://www.aapm.org/meetings/amos2/pdf/34-8205-79886-720.pdf
-#
+
 # - T1: weighting better delineates anatomy
 # - T2: weighting naturally shows pathology
-#
+
 # #### according to https://radiopaedia.org/articles/fluid-attenuated-inversion-recovery
-#
+
 # Fluid attenuated inversion recovery (FLAIR) is a special inversion recovery sequence with a long inversion time. This removes signal from the cerebrospinal fluid in the resulting images 1. Brain tissue on FLAIR images appears similar to T2 weighted images with grey matter brighter than white matter but CSF is dark instead of bright.
-#
+
 # To null the signal from fluid, the inversion time (TI) of the FLAIR pulse sequence is adjusted such that at equilibrium there is no net transverse magnetization of fluid.
-#
+
 # The FLAIR sequence is part of almost all protocols for imaging the brain, particularly useful in the detection of subtle changes at the periphery of the hemispheres and in the periventricular region close to CSF.
 
 # %%
@@ -112,7 +98,7 @@ _ = pd.Series(scans).value_counts().plot(kind="bar", grid=True)
 
 # %% [markdown]
 # ### Interactive view
-#
+
 # showing particular scan in XYZ dimension/slices
 
 # %%
@@ -145,12 +131,12 @@ interactive_show(PATH_SAMPLE_VOLUME, crop_thr=1e-6)
 
 # %% [markdown]
 # ## Prepare dataset
-#
+
 # ### Pytorch Dataset
-#
+
 # The basic building block is transforming raw data to Torch Dataset.
 # We have here loading particular DICOM images into a volume and saving as temp/cacher, so we do not need to take the very time demanding loading do next time - this boost the IO from about 2h to 8min
-#
+
 # At the end we show a few sample images from prepared dataset.
 
 # %%
@@ -178,9 +164,9 @@ for i in tqdm(range(2)):
 
 # %% [markdown]
 # ### Lightning DataModule
-#
+
 # It is convenient to wrap all data-related pieces and define PyTorch dataloader for Training / Validation / Testing phase.
-#
+
 # At the end we show a few sample images from the first training batch.
 
 # %%
@@ -246,9 +232,9 @@ for batch in dm.train_dataloader():
 
 # %% [markdown]
 # ## Prepare 3D model
-#
+
 # LightningModule is the core of PL, it wraps all model related pieces, mainly:
-#
+
 # - the model/architecture/weights
 # - evaluation metrics
 # - configs for optimizer and LR scheduler
@@ -272,14 +258,14 @@ model = LitBrainMRI(net=net, pretrained_params=None, lr=5e-4, optimizer=Adamax)
 
 # %% [markdown]
 # ## Train a model
-#
+
 # Lightning forces the following structure to your code which makes it reusable and shareable:
-#
+
 # - Research code (the LightningModule).
 # - Engineering code (you delete, and is handled by the Trainer).
 # - Non-essential research code (logging, etc... this goes in Callbacks).
 # - Data (use PyTorch DataLoaders or organize them into a LightningDataModule).
-#
+
 # Once you do this, you can train on multiple-GPUs, TPUs, CPUs and even in 16-bit precision without changing your code!
 
 # %%
